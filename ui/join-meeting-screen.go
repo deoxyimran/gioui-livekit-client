@@ -24,8 +24,8 @@ type JoinMeetingScreen struct {
 	joinMeetingBtn widget.Clickable
 }
 
-func NewJoinMeetingScreen(screenPointer *Screen) JoinMeetingScreen {
-	return JoinMeetingScreen{th: material.NewTheme(), screenPointer: screenPointer}
+func NewJoinMeetingScreen(screenPointer *Screen) *JoinMeetingScreen {
+	return &JoinMeetingScreen{th: material.NewTheme(), screenPointer: screenPointer}
 }
 
 func (j *JoinMeetingScreen) Layout(gtx C) D {
@@ -38,7 +38,7 @@ func (j *JoinMeetingScreen) Layout(gtx C) D {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
 		func(gtx C) D {
-			gtx.Constraints.Min = image.Pt(0, 0) // Reset Min
+			gtx.Constraints.Min = image.Pt(0, 0) // Reset Constraints Min
 			return layout.UniformInset(10).Layout(gtx,
 				func(gtx C) D {
 					return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle, Spacing: layout.SpaceAround}.Layout(gtx,

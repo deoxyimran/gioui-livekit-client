@@ -30,10 +30,13 @@ func main() {
 func run(window *app.Window) error {
 	var ops op.Ops
 	joinMeetingScreen := ui.NewJoinMeetingScreen(&screenPointer)
-	var joinRoomScreen ui.JoinRoomScreen
+	var joinRoomScreen *ui.JoinRoomScreen
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
+			if joinRoomScreen != nil && !joinRoomScreen.Destroyed {
+				joinRoomScreen.Destroy()
+			}
 			return e.Err
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
