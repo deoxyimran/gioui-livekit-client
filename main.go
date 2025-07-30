@@ -9,6 +9,9 @@ import (
 	"github.com/deoxyimran/gioui-livekit-client/ui"
 )
 
+var screenPointer ui.Screen = ui.JOIN_MEETING_SCREEN
+var prevScreenPointer ui.Screen = ui.JOIN_MEETING_SCREEN
+
 func main() {
 	go func() {
 		window := new(app.Window)
@@ -26,14 +29,39 @@ func main() {
 
 func run(window *app.Window) error {
 	var ops op.Ops
-	joinScreen := ui.NewJoinMeetingScreen()
+	joinMeetingScreen := ui.NewJoinMeetingScreen(&screenPointer)
+	var joinRoomScreen ui.JoinRoomScreen
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
 			return e.Err
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
-			joinScreen.Layout(gtx)
+			// Handle screen switching
+			switch screenPointer {
+			case ui.JOIN_MEETING_SCREEN:
+				temp := screenPointer
+				if prevScreenPointer != screenPointer {
+					joinMeetingScreen = ui.NewJoinMeetingScreen(&screenPointer)
+					joinMeetingScreen.Layout(gtx)
+				} else {
+					joinMeetingScreen.Layout(gtx)
+				}
+				if temp == screenPointer {
+					prevScreenPointer = temp
+				}
+			case ui.JOIN_ROOM_SCREEN:
+				temp := screenPointer
+				if prevScreenPointer != screenPointer {
+					joinRoomScreen = ui.NewJoinRoomScreen(&screenPointer)
+					joinRoomScreen.Layout(gtx)
+				} else {
+					joinRoomScreen.Layout(gtx)
+				}
+				if temp == screenPointer {
+					prevScreenPointer = temp
+				}
+			}
 			e.Frame(gtx.Ops)
 		}
 	}
