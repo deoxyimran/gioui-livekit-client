@@ -10,6 +10,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/deoxyimran/gioui-livekit-client/ui/theme"
 )
 
 type JoinRoomScreen struct {
@@ -36,7 +37,7 @@ func (j *JoinRoomScreen) Layout(gtx C) D {
 	return layout.Background{}.Layout(gtx,
 		func(gtx C) D {
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
-			color := color.NRGBA{R: 17, G: 17, B: 17, A: 255}
+			color := theme.BackgroundColor()
 			paint.ColorOp{Color: color}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 			return layout.Dimensions{Size: gtx.Constraints.Max}
