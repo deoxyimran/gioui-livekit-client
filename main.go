@@ -34,8 +34,8 @@ func run(window *app.Window) error {
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
-			if joinRoomScreen != nil && !joinRoomScreen.Destroyed {
-				joinRoomScreen.Destroy()
+			if joinRoomScreen != nil {
+				joinRoomScreen.StopVideoCapture()
 			}
 			return e.Err
 		case app.FrameEvent:

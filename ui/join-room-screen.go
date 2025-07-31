@@ -1,12 +1,16 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"log"
 	"sync"
+	"time"
 
+	"gioui.org/f32"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -21,8 +25,8 @@ type JoinRoomScreen struct {
 	th            *material.Theme
 	userNameEdit  widget.Editor
 	joinRoomBtn   widget.Clickable
-	videoEnabled  chan bool
-	Destroyed     bool
+	videoStop     chan bool
+	isVideoOn     bool
 	frame         image.Image
 	mutex         sync.Mutex
 }
@@ -37,53 +41,62 @@ func NewJoinRoomScreen(screenPointer *Screen) *JoinRoomScreen {
 		th:            th,
 		userNameEdit:  userNameEdit,
 		screenPointer: screenPointer,
-		videoEnabled:  make(chan bool),
+		videoStop:     make(chan bool),
 	}
 
 	// Initialize webcam and start video capture in a separate goroutine
-
-	j.videoEnabled <- true // Start video capture
+	j.startVideoCapture()
 	return j
 }
 
-func (j *JoinRoomScreen) Destroy() {
-	j.videoEnabled <- false // Stop video capture
-	j.Destroyed = true
+func (j *JoinRoomScreen) StopVideoCapture() {
+	if j.isVideoOn {
+		j.isVideoOn = false
+		j.videoStop <- true // Stop video capture
+	}
 }
 
 func (j *JoinRoomScreen) startVideoCapture() {
-	cap, err := gocv.VideoCaptureDevice(0)
-	if err != nil {
-		log.Printf("Error opening video capture device: %v", err)
-		return
-	}
-	defer cap.Close()
-	img := gocv.NewMat()
-	defer img.Close()
-
-	for enabled := range j.videoEnabled {
-		if !enabled {
+	j.isVideoOn = true
+	go func() {
+		cap, err := gocv.VideoCaptureDevice(0)
+		if err != nil {
+			log.Printf("Error opening video capture device: %v", err)
 			return
 		}
+		defer cap.Close()
+		mat := gocv.NewMat()
+		defer mat.Close()
 
-		if ok := cap.Read(&img); !ok {
-			log.Println("Error reading from video capture device")
-			continue
-		}
+		loop := true
+		for loop {
+			select {
+			case b := <-j.videoStop:
+				if b {
+					loop = !loop
+				}
+			default:
+				fmt.Println("Capturing video frame...")
+				if ok := cap.Read(&mat); !ok {
+					log.Println("Error reading from video capture device")
+					continue
+				}
 
-		j.mutex.Lock()
-		j.frame, err = img.ToImage()
-		if err != nil {
-			log.Printf("Error converting frame to image: %v\n", err)
-			j.mutex.Unlock()
-			continue
+				j.mutex.Lock()
+				j.frame, err = mat.ToImage()
+				if err != nil {
+					log.Printf("Error converting frame to image: %v\n", err)
+					j.mutex.Unlock()
+					continue
+				}
+				j.mutex.Unlock()
+			}
 		}
-		j.mutex.Unlock()
-	}
+	}()
 }
 
 func (j *JoinRoomScreen) Layout(gtx C) D {
-	return layout.Background{}.Layout(gtx,
+	return layout.Background{}.Layout(gtx, // Fullscreen background
 		func(gtx C) D {
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
 			color := theme.BackgroundColor()
@@ -109,19 +122,59 @@ func (j *JoinRoomScreen) Layout(gtx C) D {
 											paint.PaintOp{}.Add(gtx.Ops)
 											return layout.Dimensions{Size: sz}
 										},
-										// Layout the webcam video canvas
-										// func(gtx C) D {
-										// 	return layout
-										// }
-										// Layout the editor
+										// Layout the content
 										func(gtx C) D {
-											c := gtx.Constraints
-											c.Max.X, c.Min.X = 200, 200
-											gtx.Constraints = c
-											edit := material.Editor(j.th, &j.userNameEdit, "Enter a name")
-											edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-											edit.TextSize = unit.Sp(14)
-											return layout.UniformInset(unit.Dp(10)).Layout(gtx, edit.Layout)
+											return layout.UniformInset(unit.Dp(10)).Layout(gtx,
+												func(gtx C) D {
+													return layout.Flex{
+														Axis:      layout.Vertical,
+														Alignment: layout.Middle,
+													}.Layout(gtx,
+														layout.Rigid(
+															func(gtx C) D {
+																const w, h = 320, 240
+																if j.isVideoOn {
+																	// Scale the image to fit 320x240 px
+																	defer clip.Rect(image.Rectangle{Max: image.Pt(w, h)}).Push(gtx.Ops).Pop()
+
+																	j.mutex.Lock()
+																	if j.frame == nil {
+																		paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
+																	} else {
+																		scale := f32.Affine2D{}.Scale(f32.Point{}, f32.Point{
+																			X: float32(w) / float32(j.frame.Bounds().Dx()),
+																			Y: float32(h) / float32(j.frame.Bounds().Dy()),
+																		})
+																		op.Affine(scale).Add(gtx.Ops)
+																		paint.NewImageOp(j.frame).Add(gtx.Ops)
+																	}
+																	j.mutex.Unlock()
+																	paint.PaintOp{}.Add(gtx.Ops)
+																	gtx.Execute(op.InvalidateCmd{At: gtx.Now.Add(time.Second / 30)}) // Cap to 30Fps
+
+																	return layout.Dimensions{Size: image.Pt(w, h)}
+																} else {
+																	defer clip.Rect{Max: image.Pt(w, h)}.Push(gtx.Ops).Pop()
+																	paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
+																	paint.PaintOp{}.Add(gtx.Ops)
+																	return layout.Dimensions{Size: image.Pt(w, h)}
+																}
+															},
+														),
+														layout.Rigid(
+															func(gtx C) D {
+																c := gtx.Constraints
+																c.Max.X, c.Min.X = 200, 200
+																gtx.Constraints = c
+																edit := material.Editor(j.th, &j.userNameEdit, "Enter a name")
+																edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+																edit.TextSize = unit.Sp(14)
+																return edit.Layout(gtx)
+															},
+														),
+													)
+												},
+											)
 										},
 									)
 								}),
