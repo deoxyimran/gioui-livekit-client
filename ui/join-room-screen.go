@@ -61,7 +61,7 @@ func (j *JoinRoomScreen) startVideoCapture() {
 		cap, err := gocv.VideoCaptureFile("/dev/video0") // Change to your video capture device
 		if err != nil {
 			log.Printf("Error opening video capture device: %v", err)
-			return
+			j.isVideoOn = false
 		}
 		defer cap.Close()
 		mat := gocv.NewMat()
@@ -76,14 +76,14 @@ func (j *JoinRoomScreen) startVideoCapture() {
 				}
 			default:
 				if ok := cap.Read(&mat); !ok {
-					log.Println("Error reading from video capture device")
+					// log.Println("Error reading from video capture device")
 					continue
 				}
 
 				j.mutex.Lock()
 				j.frame, err = mat.ToImage()
 				if err != nil {
-					log.Printf("Error converting frame to image: %v\n", err)
+					// log.Printf("Error converting frame to image: %v\n", err)
 					j.mutex.Unlock()
 					continue
 				}
@@ -94,7 +94,8 @@ func (j *JoinRoomScreen) startVideoCapture() {
 }
 
 func (j *JoinRoomScreen) Layout(gtx C, screenPointer *Screen) D {
-	return layout.Background{}.Layout(gtx, // Fullscreen background
+	return layout.Background{}.Layout(gtx,
+		// Fullscreen background
 		func(gtx C) D {
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
 			color := theme.BackgroundColor()
@@ -102,6 +103,7 @@ func (j *JoinRoomScreen) Layout(gtx C, screenPointer *Screen) D {
 			paint.PaintOp{}.Add(gtx.Ops)
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
+		// Main content
 		func(gtx C) D {
 			gtx.Constraints.Min = image.Pt(0, 0) // Reset Constraints Min
 			return layout.UniformInset(10).Layout(gtx,
@@ -109,69 +111,62 @@ func (j *JoinRoomScreen) Layout(gtx C, screenPointer *Screen) D {
 					return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle, Spacing: layout.SpaceAround}.Layout(gtx,
 						layout.Rigid(func(gtx C) D {
 							return layout.Flex{Axis: layout.Vertical, Alignment: layout.Middle}.Layout(gtx,
-								// layout Username editor
 								layout.Rigid(func(gtx C) D {
-									return layout.Background{}.Layout(gtx,
-										// Set a background
+									return layout.UniformInset(unit.Dp(10)).Layout(gtx,
 										func(gtx C) D {
-											sz := gtx.Constraints.Min
-											defer clip.UniformRRect(image.Rectangle{Max: sz}, 5).Push(gtx.Ops).Pop()
-											paint.ColorOp{Color: color.NRGBA{255, 255, 255, 20}}.Add(gtx.Ops)
-											paint.PaintOp{}.Add(gtx.Ops)
-											return layout.Dimensions{Size: sz}
-										},
-										// Layout the content
-										func(gtx C) D {
-											return layout.UniformInset(unit.Dp(10)).Layout(gtx,
-												func(gtx C) D {
-													return layout.Flex{
-														Axis:      layout.Vertical,
-														Alignment: layout.Middle,
-													}.Layout(gtx,
-														layout.Rigid(
-															func(gtx C) D {
-																const w, h = 320, 240
-																if j.isVideoOn {
-																	// Scale the image to fit 320x240 px
-																	defer clip.Rect(image.Rectangle{Max: image.Pt(w, h)}).Push(gtx.Ops).Pop()
+											return layout.Flex{
+												Axis:      layout.Vertical,
+												Alignment: layout.Middle,
+											}.Layout(gtx,
+												// Video canvas
+												layout.Rigid(
+													func(gtx C) D {
+														const w, h = 320, 240
+														if j.isVideoOn {
+															// Scale the image to fit 320x240 px
+															defer clip.Rect(image.Rectangle{Max: image.Pt(w, h)}).Push(gtx.Ops).Pop()
 
-																	j.mutex.Lock()
-																	if j.frame == nil {
-																		paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
-																	} else {
-																		scale := f32.Affine2D{}.Scale(f32.Point{}, f32.Point{
-																			X: float32(w) / float32(j.frame.Bounds().Dx()),
-																			Y: float32(h) / float32(j.frame.Bounds().Dy()),
-																		})
-																		op.Affine(scale).Add(gtx.Ops)
-																		paint.NewImageOp(j.frame).Add(gtx.Ops)
-																	}
-																	j.mutex.Unlock()
-																	paint.PaintOp{}.Add(gtx.Ops)
-																	gtx.Execute(op.InvalidateCmd{At: gtx.Now.Add(time.Second / 30)}) // Cap to 30Fps
+															j.mutex.Lock()
+															if j.frame == nil {
+																paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
+															} else {
+																scale := f32.Affine2D{}.Scale(f32.Point{}, f32.Point{
+																	X: float32(w) / float32(j.frame.Bounds().Dx()),
+																	Y: float32(h) / float32(j.frame.Bounds().Dy()),
+																})
+																op.Affine(scale).Add(gtx.Ops)
+																paint.NewImageOp(j.frame).Add(gtx.Ops)
+															}
+															j.mutex.Unlock()
+															paint.PaintOp{}.Add(gtx.Ops)
+															gtx.Execute(op.InvalidateCmd{At: gtx.Now.Add(time.Second / 30)}) // Cap to 30Fps
 
-																	return layout.Dimensions{Size: image.Pt(w, h)}
-																} else {
-																	defer clip.Rect{Max: image.Pt(w, h)}.Push(gtx.Ops).Pop()
-																	paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
-																	paint.PaintOp{}.Add(gtx.Ops)
-																	return layout.Dimensions{Size: image.Pt(w, h)}
-																}
-															},
-														),
-														layout.Rigid(
+															return layout.Dimensions{Size: image.Pt(w, h)}
+														} else {
+															defer clip.Rect{Max: image.Pt(w, h)}.Push(gtx.Ops).Pop()
+															paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
+															paint.PaintOp{}.Add(gtx.Ops)
+															return layout.Dimensions{Size: image.Pt(w, h)}
+														}
+													},
+												),
+												// Username editor
+												layout.Rigid(
+													func(gtx C) D {
+														c := gtx.Constraints
+														c.Max.X, c.Min.X = 300, 300
+														gtx.Constraints = c
+														edit := material.Editor(j.th, &j.userNameEdit, "Enter a name")
+														edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+														edit.HintColor = color.NRGBA{R: 135, G: 135, B: 135, A: 220}
+														edit.TextSize = unit.Sp(14)
+														return layout.UniformInset(unit.Dp(10)).Layout(gtx,
 															func(gtx C) D {
-																c := gtx.Constraints
-																c.Max.X, c.Min.X = 200, 200
-																gtx.Constraints = c
-																edit := material.Editor(j.th, &j.userNameEdit, "Enter a name")
-																edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-																edit.TextSize = unit.Sp(14)
-																return edit.Layout(gtx)
+																return borderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
 															},
-														),
-													)
-												},
+														)
+													},
+												),
 											)
 										},
 									)
