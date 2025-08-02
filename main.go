@@ -29,7 +29,8 @@ func main() {
 
 func run(window *app.Window) error {
 	var ops op.Ops
-	joinMeetingScreen := ui.NewJoinMeetingScreen(&screenPointer)
+	stateManger := ui.NewStateManager()
+	joinMeetingScreen := ui.NewJoinMeetingScreen(&stateManger)
 	var joinRoomScreen *ui.JoinRoomScreen
 	for {
 		switch e := window.Event().(type) {
@@ -45,10 +46,10 @@ func run(window *app.Window) error {
 			case ui.JOIN_MEETING_SCREEN:
 				temp := screenPointer
 				if prevScreenPointer != screenPointer {
-					joinMeetingScreen = ui.NewJoinMeetingScreen(&screenPointer)
-					joinMeetingScreen.Layout(gtx)
+					joinMeetingScreen = ui.NewJoinMeetingScreen(&stateManger)
+					joinMeetingScreen.Layout(gtx, &screenPointer)
 				} else {
-					joinMeetingScreen.Layout(gtx)
+					joinMeetingScreen.Layout(gtx, &screenPointer)
 				}
 				if temp == screenPointer {
 					prevScreenPointer = temp
@@ -56,10 +57,10 @@ func run(window *app.Window) error {
 			case ui.JOIN_ROOM_SCREEN:
 				temp := screenPointer
 				if prevScreenPointer != screenPointer {
-					joinRoomScreen = ui.NewJoinRoomScreen(&screenPointer)
-					joinRoomScreen.Layout(gtx)
+					joinRoomScreen = ui.NewJoinRoomScreen(&stateManger)
+					joinRoomScreen.Layout(gtx, &screenPointer)
 				} else {
-					joinRoomScreen.Layout(gtx)
+					joinRoomScreen.Layout(gtx, &screenPointer)
 				}
 				if temp == screenPointer {
 					prevScreenPointer = temp

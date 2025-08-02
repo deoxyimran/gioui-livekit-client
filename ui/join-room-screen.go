@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"log"
@@ -21,27 +20,27 @@ import (
 )
 
 type JoinRoomScreen struct {
-	screenPointer *Screen
-	th            *material.Theme
-	userNameEdit  widget.Editor
-	joinRoomBtn   widget.Clickable
-	videoStop     chan bool
-	isVideoOn     bool
-	frame         image.Image
-	mutex         sync.Mutex
+	stateManager *StateManager
+	th           *material.Theme
+	userNameEdit widget.Editor
+	joinRoomBtn  widget.Clickable
+	videoStop    chan bool
+	isVideoOn    bool
+	frame        image.Image
+	mutex        sync.Mutex
 }
 
-func NewJoinRoomScreen(screenPointer *Screen) *JoinRoomScreen {
+func NewJoinRoomScreen(stateManager *StateManager) *JoinRoomScreen {
 	th := material.NewTheme()
 	userNameEdit := widget.Editor{
 		SingleLine: true,
 		Submit:     true,
 	}
 	j := &JoinRoomScreen{
-		th:            th,
-		userNameEdit:  userNameEdit,
-		screenPointer: screenPointer,
-		videoStop:     make(chan bool),
+		stateManager: stateManager,
+		th:           th,
+		userNameEdit: userNameEdit,
+		videoStop:    make(chan bool),
 	}
 
 	// Initialize webcam and start video capture in a separate goroutine
@@ -59,7 +58,7 @@ func (j *JoinRoomScreen) StopVideoCapture() {
 func (j *JoinRoomScreen) startVideoCapture() {
 	j.isVideoOn = true
 	go func() {
-		cap, err := gocv.VideoCaptureDevice(0)
+		cap, err := gocv.VideoCaptureFile("/dev/video0") // Change to your video capture device
 		if err != nil {
 			log.Printf("Error opening video capture device: %v", err)
 			return
@@ -76,7 +75,6 @@ func (j *JoinRoomScreen) startVideoCapture() {
 					loop = !loop
 				}
 			default:
-				fmt.Println("Capturing video frame...")
 				if ok := cap.Read(&mat); !ok {
 					log.Println("Error reading from video capture device")
 					continue
@@ -95,7 +93,7 @@ func (j *JoinRoomScreen) startVideoCapture() {
 	}()
 }
 
-func (j *JoinRoomScreen) Layout(gtx C) D {
+func (j *JoinRoomScreen) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx, // Fullscreen background
 		func(gtx C) D {
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()

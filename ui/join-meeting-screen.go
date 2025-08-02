@@ -19,16 +19,28 @@ type (
 )
 
 type JoinMeetingScreen struct {
-	screenPointer  *Screen
+	stateManager   *StateManager
 	th             *material.Theme
 	joinMeetingBtn widget.Clickable
 }
 
-func NewJoinMeetingScreen(screenPointer *Screen) *JoinMeetingScreen {
-	return &JoinMeetingScreen{th: material.NewTheme(), screenPointer: screenPointer}
+func NewJoinMeetingScreen(stateManager *StateManager) *JoinMeetingScreen {
+	return &JoinMeetingScreen{
+		th:           material.NewTheme(),
+		stateManager: stateManager,
+	}
 }
 
-func (j *JoinMeetingScreen) Layout(gtx C) D {
+func (j *JoinMeetingScreen) switchScreen(screenPointer *Screen) {
+	// Switch to the Join Room Screen
+	*screenPointer = JOIN_ROOM_SCREEN
+	if _, ok := j.stateManager.GetState(JOIN_ROOM_SCREEN).(*AppStateMeetingScreen); ok {
+
+	}
+
+}
+
+func (j *JoinMeetingScreen) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx,
 		func(gtx C) D {
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
@@ -72,7 +84,7 @@ func (j *JoinMeetingScreen) Layout(gtx C) D {
 												gtx.Constraints.Max.Y = 60
 												b := material.Button(j.th, &j.joinMeetingBtn, "Join Meeting")
 												if j.joinMeetingBtn.Clicked(gtx) {
-													*j.screenPointer = JOIN_ROOM_SCREEN
+													j.switchScreen(screenPointer)
 												}
 												return layout.UniformInset(unit.Dp(10)).Layout(gtx, b.Layout)
 											}),
