@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -35,6 +36,7 @@ func run(window *app.Window) error {
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
+			fmt.Println("Exiting application...")
 			if joinRoomScreen != nil {
 				joinRoomScreen.StopVideoCapture()
 			}
@@ -53,6 +55,8 @@ func run(window *app.Window) error {
 				}
 				if temp == screenPointer {
 					prevScreenPointer = temp
+				} else { // if screenPointer now points to different screen
+					joinMeetingScreen = nil
 				}
 			case ui.JOIN_ROOM_SCREEN:
 				temp := screenPointer
@@ -64,6 +68,8 @@ func run(window *app.Window) error {
 				}
 				if temp == screenPointer {
 					prevScreenPointer = temp
+				} else { // if screenPointer now points to different screen
+					joinRoomScreen = nil
 				}
 			}
 			e.Frame(gtx.Ops)
