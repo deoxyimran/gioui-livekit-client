@@ -35,13 +35,13 @@ func (j *JoinMeetingScreen) switchScreen(screenPointer *Screen) {
 	// Switch to the Join Room Screen
 	*screenPointer = JOIN_ROOM_SCREEN
 	if _, ok := j.stateManager.GetState(JOIN_ROOM_SCREEN).(*AppStateMeetingScreen); ok {
-
 	}
 
 }
 
 func (j *JoinMeetingScreen) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx,
+		// Fullscreen background
 		func(gtx C) D {
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
 			color := color.NRGBA{R: 17, G: 17, B: 17, A: 255}
@@ -49,6 +49,7 @@ func (j *JoinMeetingScreen) Layout(gtx C, screenPointer *Screen) D {
 			paint.PaintOp{}.Add(gtx.Ops)
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
+		// Main content
 		func(gtx C) D {
 			gtx.Constraints.Min = image.Pt(0, 0) // Reset Constraints Min
 			return layout.UniformInset(10).Layout(gtx,
@@ -90,7 +91,7 @@ func (j *JoinMeetingScreen) Layout(gtx C, screenPointer *Screen) D {
 											}),
 										)
 									}
-									return borderLayout(gtx, w, 1, color.NRGBA{150, 150, 150, 255})
+									return borderLayout(gtx, w, 1, 1, color.NRGBA{150, 150, 150, 255})
 								}),
 							)
 						}),
