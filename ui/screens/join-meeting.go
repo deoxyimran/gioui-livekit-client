@@ -1,4 +1,4 @@
-package ui
+package screens
 
 import (
 	"image"
@@ -11,6 +11,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
 )
 
 type (
@@ -18,28 +19,28 @@ type (
 	D = layout.Dimensions
 )
 
-type JoinMeetingScreen struct {
+type JoinMeeting struct {
 	stateManager   *StateManager
 	th             *material.Theme
 	joinMeetingBtn widget.Clickable
 }
 
-func NewJoinMeetingScreen(stateManager *StateManager) *JoinMeetingScreen {
-	return &JoinMeetingScreen{
+func NewJoinMeetingScreen(stateManager *StateManager) *JoinMeeting {
+	return &JoinMeeting{
 		th:           material.NewTheme(),
 		stateManager: stateManager,
 	}
 }
 
-func (j *JoinMeetingScreen) switchScreen(screenPointer *Screen) {
+func (j *JoinMeeting) switchScreen(screenPointer *Screen) {
 	// Switch to the Join Room Screen
-	*screenPointer = JOIN_ROOM_SCREEN
-	if _, ok := j.stateManager.GetState(JOIN_ROOM_SCREEN).(*AppStateMeetingScreen); ok {
+	*screenPointer = JOIN_ROOM
+	if _, ok := j.stateManager.GetState(JOIN_ROOM).(*AppStateMeetingScreen); ok {
 	}
 
 }
 
-func (j *JoinMeetingScreen) Layout(gtx C, screenPointer *Screen) D {
+func (j *JoinMeeting) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx,
 		// Fullscreen background
 		func(gtx C) D {
@@ -91,7 +92,7 @@ func (j *JoinMeetingScreen) Layout(gtx C, screenPointer *Screen) D {
 											}),
 										)
 									}
-									return borderLayout(gtx, w, 1, 1, color.NRGBA{150, 150, 150, 255})
+									return utils.BorderLayout(gtx, w, 1, 1, color.NRGBA{150, 150, 150, 255})
 								}),
 							)
 						}),

@@ -1,4 +1,4 @@
-package ui
+package utils
 
 import (
 	"image"
@@ -10,8 +10,13 @@ import (
 	"gioui.org/unit"
 )
 
+type (
+	C = layout.Context
+	D = layout.Dimensions
+)
+
 // Layout utils
-func borderLayout(gtx C, inner layout.Widget, width float32, padding unit.Dp, color color.NRGBA) D {
+func BorderLayout(gtx C, inner layout.Widget, width float32, padding unit.Dp, color color.NRGBA) D {
 	// Layout inner first
 	dims := layout.UniformInset(padding).Layout(gtx, inner)
 

@@ -7,11 +7,11 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/op"
-	"github.com/deoxyimran/gioui-livekit-client/ui"
+	"github.com/deoxyimran/gioui-livekit-client/ui/screens"
 )
 
-var screenPointer ui.Screen = ui.JOIN_MEETING_SCREEN
-var prevScreenPointer ui.Screen = ui.JOIN_MEETING_SCREEN
+var screenPointer screens.Screen = screens.JOIN_MEETING
+var prevScreenPointer screens.Screen = screens.JOIN_MEETING
 
 func main() {
 	go func() {
@@ -30,9 +30,10 @@ func main() {
 
 func run(window *app.Window) error {
 	var ops op.Ops
-	stateManger := ui.NewStateManager()
-	joinMeetingScreen := ui.NewJoinMeetingScreen(&stateManger)
-	var joinRoomScreen *ui.JoinRoomScreen
+	stateManger := screens.NewStateManager()
+
+	joinMeetingScreen := screens.NewJoinMeetingScreen(&stateManger) // Default screen
+	var joinRoomScreen *screens.JoinRoom
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
@@ -45,10 +46,10 @@ func run(window *app.Window) error {
 			gtx := app.NewContext(&ops, e)
 			// Handle screen switching
 			switch screenPointer {
-			case ui.JOIN_MEETING_SCREEN:
+			case screens.JOIN_MEETING:
 				temp := screenPointer
 				if prevScreenPointer != screenPointer {
-					joinMeetingScreen = ui.NewJoinMeetingScreen(&stateManger)
+					joinMeetingScreen = screens.NewJoinMeetingScreen(&stateManger)
 					joinMeetingScreen.Layout(gtx, &screenPointer)
 				} else {
 					joinMeetingScreen.Layout(gtx, &screenPointer)
@@ -58,10 +59,10 @@ func run(window *app.Window) error {
 				} else { // if screenPointer now points to different screen
 					joinMeetingScreen = nil
 				}
-			case ui.JOIN_ROOM_SCREEN:
+			case screens.JOIN_ROOM:
 				temp := screenPointer
 				if prevScreenPointer != screenPointer {
-					joinRoomScreen = ui.NewJoinRoomScreen(&stateManger)
+					joinRoomScreen = screens.NewJoinRoomScreen(&stateManger)
 					joinRoomScreen.Layout(gtx, &screenPointer)
 				} else {
 					joinRoomScreen.Layout(gtx, &screenPointer)

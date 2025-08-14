@@ -1,4 +1,4 @@
-package ui
+package screens
 
 import (
 	"image"
@@ -16,27 +16,30 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/deoxyimran/gioui-livekit-client/ui/theme"
+	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
 	"gocv.io/x/gocv"
 )
 
-type JoinRoomScreen struct {
+type JoinRoom struct {
+	// Widgets
+	th               *material.Theme
+	userNameEdit     widget.Editor
+	joinRoomClickble widget.Clickable
+	// States/control vars
 	stateManager *StateManager
-	th           *material.Theme
-	userNameEdit widget.Editor
-	joinRoomBtn  widget.Clickable
-	videoStop    chan bool
-	isVideoOn    bool
 	frame        image.Image
 	mutex        sync.Mutex
+	videoStop    chan bool
+	isVideoOn    bool
 }
 
-func NewJoinRoomScreen(stateManager *StateManager) *JoinRoomScreen {
+func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 	th := material.NewTheme()
 	userNameEdit := widget.Editor{
 		SingleLine: true,
 		Submit:     true,
 	}
-	j := &JoinRoomScreen{
+	j := &JoinRoom{
 		stateManager: stateManager,
 		th:           th,
 		userNameEdit: userNameEdit,
@@ -48,17 +51,17 @@ func NewJoinRoomScreen(stateManager *StateManager) *JoinRoomScreen {
 	return j
 }
 
-func (j *JoinRoomScreen) StopVideoCapture() {
+func (j *JoinRoom) StopVideoCapture() {
 	if j.isVideoOn {
 		j.isVideoOn = false
 		j.videoStop <- true // Stop video capture
 	}
 }
 
-func (j *JoinRoomScreen) startVideoCapture() {
+func (j *JoinRoom) startVideoCapture() {
 	j.isVideoOn = true
 	go func() {
-		cap, err := gocv.VideoCaptureFile("/dev/video0") // Change to your video capture device
+		cap, err := gocv.VideoCaptureFile("/dev/video0")
 		if err != nil {
 			log.Printf("Error opening video capture device: %v", err)
 			j.isVideoOn = false
@@ -93,7 +96,7 @@ func (j *JoinRoomScreen) startVideoCapture() {
 	}()
 }
 
-func (j *JoinRoomScreen) Layout(gtx C, screenPointer *Screen) D {
+func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx,
 		// Fullscreen background
 		func(gtx C) D {
@@ -162,7 +165,7 @@ func (j *JoinRoomScreen) Layout(gtx C, screenPointer *Screen) D {
 														edit.TextSize = unit.Sp(14)
 														return layout.UniformInset(unit.Dp(10)).Layout(gtx,
 															func(gtx C) D {
-																return borderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
+																return utils.BorderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
 															},
 														)
 													},

@@ -1,5 +1,6 @@
-package ui
+package screens
 
+// Add your screen states here
 type AppStateRoomScreen struct {
 	MicOn          bool
 	CameraOn       bool
@@ -17,8 +18,8 @@ func NewStateManager() StateManager {
 	sm := StateManager{}
 	sm.states = make(map[Screen]any)
 	// Add states according to the structs defined
-	sm.states[JOIN_MEETING_SCREEN] = &AppStateMeetingScreen{}
-	sm.states[JOIN_ROOM_SCREEN] = &AppStateRoomScreen{}
+	sm.states[JOIN_MEETING] = &AppStateMeetingScreen{}
+	sm.states[JOIN_ROOM] = &AppStateRoomScreen{}
 	return sm
 }
 
