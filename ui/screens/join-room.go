@@ -3,8 +3,6 @@ package screens
 import (
 	"image"
 	"image/color"
-	"log"
-	"sync"
 	"time"
 
 	"gioui.org/f32"
@@ -15,9 +13,10 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/deoxyimran/gioui-livekit-client/ui/components"
+	"github.com/deoxyimran/gioui-livekit-client/ui/media/video"
 	"github.com/deoxyimran/gioui-livekit-client/ui/theme"
 	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
-	"gocv.io/x/gocv"
 )
 
 type JoinRoom struct {
@@ -27,10 +26,7 @@ type JoinRoom struct {
 	joinRoomClickble widget.Clickable
 	// States/control vars
 	stateManager *StateManager
-	frame        image.Image
-	mutex        sync.Mutex
-	videoStop    chan bool
-	isVideoOn    bool
+	vidCanvas    components.VideoCanvas
 }
 
 func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
@@ -39,61 +35,20 @@ func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 		SingleLine: true,
 		Submit:     true,
 	}
+	vs := video.NewWebcamSource("")
 	j := &JoinRoom{
 		stateManager: stateManager,
 		th:           th,
 		userNameEdit: userNameEdit,
-		videoStop:    make(chan bool),
+		vidCanvas:    components.NewVideoCanvas(&vs),
 	}
 
 	// Initialize webcam and start video capture in a separate goroutine
-	j.startVideoCapture()
 	return j
 }
 
 func (j *JoinRoom) StopVideoCapture() {
-	if j.isVideoOn {
-		j.isVideoOn = false
-		j.videoStop <- true // Stop video capture
-	}
-}
 
-func (j *JoinRoom) startVideoCapture() {
-	j.isVideoOn = true
-	go func() {
-		cap, err := gocv.VideoCaptureFile("/dev/video0")
-		if err != nil {
-			log.Printf("Error opening video capture device: %v", err)
-			j.isVideoOn = false
-		}
-		defer cap.Close()
-		mat := gocv.NewMat()
-		defer mat.Close()
-
-		loop := true
-		for loop {
-			select {
-			case b := <-j.videoStop:
-				if b {
-					loop = !loop
-				}
-			default:
-				if ok := cap.Read(&mat); !ok {
-					// log.Println("Error reading from video capture device")
-					continue
-				}
-
-				j.mutex.Lock()
-				j.frame, err = mat.ToImage()
-				if err != nil {
-					// log.Printf("Error converting frame to image: %v\n", err)
-					j.mutex.Unlock()
-					continue
-				}
-				j.mutex.Unlock()
-			}
-		}
-	}()
 }
 
 func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
@@ -125,22 +80,21 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												layout.Rigid(
 													func(gtx C) D {
 														const w, h = 320, 240
-														if j.isVideoOn {
+														if vs := j.vidCanvas.GetVideoSource(); vs.IsVideoOn() {
 															// Scale the image to fit 320x240 px
 															defer clip.Rect(image.Rectangle{Max: image.Pt(w, h)}).Push(gtx.Ops).Pop()
 
-															j.mutex.Lock()
-															if j.frame == nil {
+															if vs.GetVideoOutFrame() == nil {
 																paint.ColorOp{Color: color.NRGBA{R: 120, G: 120, B: 120, A: 255}}.Add(gtx.Ops)
 															} else {
+																f := vs.GetVideoOutFrame()
 																scale := f32.Affine2D{}.Scale(f32.Point{}, f32.Point{
-																	X: float32(w) / float32(j.frame.Bounds().Dx()),
-																	Y: float32(h) / float32(j.frame.Bounds().Dy()),
+																	X: float32(w) / float32(f.Bounds().Dx()),
+																	Y: float32(h) / float32(f.Bounds().Dy()),
 																})
 																op.Affine(scale).Add(gtx.Ops)
-																paint.NewImageOp(j.frame).Add(gtx.Ops)
+																paint.NewImageOp(f).Add(gtx.Ops)
 															}
-															j.mutex.Unlock()
 															paint.PaintOp{}.Add(gtx.Ops)
 															gtx.Execute(op.InvalidateCmd{At: gtx.Now.Add(time.Second / 30)}) // Cap to 30Fps
 
