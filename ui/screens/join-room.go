@@ -14,12 +14,14 @@ import (
 	"github.com/deoxyimran/gioui-livekit-client/ui/media/video"
 	"github.com/deoxyimran/gioui-livekit-client/ui/theme"
 	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
+	"github.com/oligo/gioview/menu"
 )
 
 type JoinRoom struct {
 	// Widgets
 	th               *material.Theme
-	userNameEdit     widget.Editor
+	userNameEditor   editor
+	deviceSelector   devSelector
 	joinRoomClickble widget.Clickable
 	// States/control vars
 	stateManager *StateManager
@@ -28,16 +30,12 @@ type JoinRoom struct {
 
 func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 	th := material.NewTheme()
-	userNameEdit := widget.Editor{
-		SingleLine: true,
-		Submit:     true,
-	}
 	vs := video.NewWebcamSource("")
 	j := &JoinRoom{
-		stateManager: stateManager,
-		th:           th,
-		userNameEdit: userNameEdit,
-		vidCanvas:    components.NewVideoCanvas(&vs, image.Pt(380, 260)),
+		stateManager:   stateManager,
+		th:             th,
+		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
+		userNameEditor: newEditor(th),
 	}
 
 	return j
@@ -45,6 +43,52 @@ func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 
 func (j *JoinRoom) StopVideoCapture() {
 
+}
+
+type editor struct {
+	th         *material.Theme
+	text       string
+	isPassword string
+	edit       widget.Editor
+	w          int
+}
+
+func newEditor(th *material.Theme) editor {
+	return editor{th: th}
+}
+
+func (e *editor) layout(gtx C) D {
+	c := gtx.Constraints
+	c.Max.X, c.Min.X = e.w, e.w
+	gtx.Constraints = c
+	edit := material.Editor(e.th, &e.edit, "Enter a name")
+	edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	edit.HintColor = color.NRGBA{R: 135, G: 135, B: 135, A: 220}
+	edit.TextSize = unit.Sp(14)
+	return layout.UniformInset(unit.Dp(10)).Layout(gtx,
+		func(gtx C) D {
+			return utils.BorderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
+		},
+	)
+}
+
+type devSelector struct {
+	th          *material.Theme
+	camDropDown *menu.DropdownMenu
+	micDropDown *menu.DropdownMenu
+	micPaths    []string
+	camPaths    []string
+	w           int
+}
+
+func newDevSelector(th *material.Theme, micPaths []string, camPaths []string) devSelector {
+	return devSelector{
+		th: th,
+	}
+}
+
+func (d *devSelector) layout(gtx C) D {
+	return layout.Dimensions{}
 }
 
 func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
@@ -75,22 +119,7 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												// Video canvas
 												layout.Rigid(j.vidCanvas.Layout),
 												// Username editor
-												layout.Rigid(
-													func(gtx C) D {
-														c := gtx.Constraints
-														c.Max.X, c.Min.X = 300, 300
-														gtx.Constraints = c
-														edit := material.Editor(j.th, &j.userNameEdit, "Enter a name")
-														edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-														edit.HintColor = color.NRGBA{R: 135, G: 135, B: 135, A: 220}
-														edit.TextSize = unit.Sp(14)
-														return layout.UniformInset(unit.Dp(10)).Layout(gtx,
-															func(gtx C) D {
-																return utils.BorderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
-															},
-														)
-													},
-												),
+												layout.Rigid(j.userNameEditor.layout),
 											)
 										},
 									)
