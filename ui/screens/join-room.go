@@ -76,10 +76,25 @@ func (e *editor) layout(gtx C) D {
 }
 
 type toggleButton struct {
-	onIcon  image.Image
-	offIcon image.Image
-	text    string
-	onClick func()
+	th              *material.Theme
+	offIcon, onIcon *widget.Icon
+	clickable       widget.Clickable
+	text            string
+	isActive        bool
+	onClick         func()
+}
+
+func (tb *toggleButton) layout(gtx C) D {
+	var dims D
+	if tb.clickable.Clicked(gtx) {
+		tb.isActive = !tb.isActive
+	}
+	if tb.isActive {
+		dims = material.IconButton(tb.th, &tb.clickable, tb.onIcon, tb.text).Layout(gtx)
+	} else {
+		dims = material.IconButton(tb.th, &tb.clickable, tb.offIcon, tb.text).Layout(gtx)
+	}
+	return dims
 }
 
 type devSelector struct {
