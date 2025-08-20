@@ -37,8 +37,8 @@ func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 		stateManager:   stateManager,
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
-		deviceSelector: newDevSelector(th, stateManager, []string{"mic1", "mic2"}, []string{"cam1", "cam2"}),
-		userNameEditor: newEditor(th),
+		deviceSelector: newDevSelector(th, stateManager, []string{"miccccc1", "mic2", "mic2", "mic2", "mic2", "mic2", "mic2", "mic2", "mic7888", "mic2"}, []string{"cam1", "cam2"}),
+		userNameEditor: newEditor(th, "Enter a name", false, 300),
 	}
 
 	return j
@@ -49,22 +49,22 @@ func (j *JoinRoom) StopVideoCapture() {
 }
 
 type editor struct {
-	th         *material.Theme
-	text       string
-	isPassword string
-	edit       widget.Editor
-	w          int
+	th          *material.Theme
+	placeholder string
+	isPassword  bool
+	edit        widget.Editor
+	w           int
 }
 
-func newEditor(th *material.Theme) editor {
-	return editor{th: th}
+func newEditor(th *material.Theme, placeholder string, isPassword bool, w int) editor {
+	return editor{th: th, placeholder: placeholder, isPassword: isPassword, w: w}
 }
 
 func (e *editor) layout(gtx C) D {
 	c := gtx.Constraints
 	c.Max.X, c.Min.X = e.w, e.w
 	gtx.Constraints = c
-	edit := material.Editor(e.th, &e.edit, "Enter a name")
+	edit := material.Editor(e.th, &e.edit, e.placeholder)
 	edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	edit.HintColor = color.NRGBA{R: 135, G: 135, B: 135, A: 220}
 	edit.TextSize = unit.Sp(14)
@@ -139,7 +139,7 @@ func (d *devSelector) newCamDropdown() *menu.DropdownMenu {
 func (d *devSelector) newMicDropdown() *menu.DropdownMenu {
 	options := [][]menu.MenuOption{}
 	options = append(options, []menu.MenuOption{})
-	for i, v := range d.camPaths {
+	for i, v := range d.micPaths {
 		options[0] = append(options[0], menu.MenuOption{
 			Layout: func(gtx menu.C, th *theme.Theme) menu.D {
 				lb := material.Label(th.Theme, unit.Sp(14), fmt.Sprint(v, i+1))
@@ -199,9 +199,9 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 			gtx.Constraints.Min = image.Pt(0, 0) // Reset Constraints Min
 			return layout.UniformInset(10).Layout(gtx,
 				func(gtx C) D {
-					return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle, Spacing: layout.SpaceAround}.Layout(gtx,
+					return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
 						layout.Rigid(func(gtx C) D {
-							return layout.Flex{Axis: layout.Vertical, Alignment: layout.Middle}.Layout(gtx,
+							return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 								layout.Rigid(func(gtx C) D {
 									return layout.UniformInset(unit.Dp(10)).Layout(gtx,
 										func(gtx C) D {
@@ -209,16 +209,20 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												Axis:      layout.Vertical,
 												Alignment: layout.Middle,
 											}.Layout(gtx,
+												// Take up remaining
+												layout.Flexed(1, func(gtx C) D {
+													return D{Size: gtx.Constraints.Max}
+												}),
 												// Video canvas
 												layout.Rigid(j.vidCanvas.Layout),
 												// Device selector
-												layout.Rigid(func(gtx C) D {
-													// gtx.Constraints.Max.X, gtx.Constraints.Min.X = 600, 600
-													// gtx.Constraints.Max.Y, gtx.Constraints.Min.Y = 200, 200
-													return j.deviceSelector.layout(gtx)
-												}),
+												layout.Rigid(j.deviceSelector.layout),
 												// // Username editor
-												// layout.Rigid(j.userNameEditor.layout),
+												layout.Rigid(j.userNameEditor.layout),
+												// Take up remaining
+												layout.Flexed(1, func(gtx C) D {
+													return D{Size: gtx.Constraints.Max}
+												}),
 											)
 										},
 									)
