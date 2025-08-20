@@ -11,7 +11,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"github.com/deoxyimran/gioui-livekit-client/ui/media/video"
+	"github.com/deoxyimran/gioui-livekit-client/ui/mediasrcs/video"
 )
 
 type (

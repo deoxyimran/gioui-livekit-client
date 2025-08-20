@@ -12,7 +12,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/deoxyimran/gioui-livekit-client/ui/components"
-	"github.com/deoxyimran/gioui-livekit-client/ui/media/video"
+	"github.com/deoxyimran/gioui-livekit-client/ui/mediasrcs/video"
 	mytheme "github.com/deoxyimran/gioui-livekit-client/ui/theme"
 	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
 	"github.com/oligo/gioview/menu"
@@ -73,6 +73,13 @@ func (e *editor) layout(gtx C) D {
 			return utils.BorderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
 		},
 	)
+}
+
+type toggleButton struct {
+	onIcon  image.Image
+	offIcon image.Image
+	text    string
+	onClick func()
 }
 
 type devSelector struct {
