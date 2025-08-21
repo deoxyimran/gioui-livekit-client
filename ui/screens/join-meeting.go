@@ -11,7 +11,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
+	mylayout "github.com/deoxyimran/gioui-livekit-client/ui/utils/layout"
 )
 
 type (
@@ -92,7 +92,7 @@ func (j *JoinMeeting) Layout(gtx C, screenPointer *Screen) D {
 											}),
 										)
 									}
-									return utils.BorderLayout(gtx, w, 1, 1, color.NRGBA{150, 150, 150, 255})
+									return mylayout.Border(gtx, w, 1, 1, color.NRGBA{150, 150, 150, 255})
 								}),
 							)
 						}),

@@ -1,4 +1,4 @@
-package utils
+package layout
 
 import (
 	"image"
@@ -16,7 +16,7 @@ type (
 )
 
 // Layout utils
-func BorderLayout(gtx C, inner layout.Widget, width float32, padding unit.Dp, color color.NRGBA) D {
+func Border(gtx C, inner layout.Widget, width float32, padding unit.Dp, color color.NRGBA) D {
 	// Layout inner first
 	dims := layout.UniformInset(padding).Layout(gtx, inner)
 

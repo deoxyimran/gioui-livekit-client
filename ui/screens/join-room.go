@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"strings"
 
+	"gioui.org/io/event"
+	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
@@ -13,8 +16,10 @@ import (
 	"gioui.org/widget/material"
 	"github.com/deoxyimran/gioui-livekit-client/ui/components"
 	"github.com/deoxyimran/gioui-livekit-client/ui/mediasrcs/video"
+	"github.com/deoxyimran/gioui-livekit-client/ui/res/icons"
 	mytheme "github.com/deoxyimran/gioui-livekit-client/ui/theme"
-	"github.com/deoxyimran/gioui-livekit-client/ui/utils"
+	mylayout "github.com/deoxyimran/gioui-livekit-client/ui/utils/layout"
+	"github.com/deoxyimran/gioui-livekit-client/ui/utils/svg"
 	"github.com/oligo/gioview/menu"
 	"github.com/oligo/gioview/theme"
 )
@@ -37,7 +42,7 @@ func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 		stateManager:   stateManager,
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
-		deviceSelector: newDevSelector(th, stateManager, []string{"miccccc1", "mic2", "mic2", "mic2", "mic2", "mic2", "mic2", "mic2", "mic7888", "mic2"}, []string{"cam1", "cam2"}),
+		deviceSelector: newDevSelector(th, stateManager, nil, nil),
 		userNameEditor: newEditor(th, "Enter a name", false, 300),
 	}
 
@@ -70,44 +75,86 @@ func (e *editor) layout(gtx C) D {
 	edit.TextSize = unit.Sp(14)
 	return layout.UniformInset(unit.Dp(10)).Layout(gtx,
 		func(gtx C) D {
-			return utils.BorderLayout(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
+			return mylayout.Border(gtx, edit.Layout, 1, 8, color.NRGBA{R: 140, G: 140, B: 140, A: 255})
 		},
 	)
 }
 
 type toggleButton struct {
 	th              *material.Theme
-	offIcon, onIcon *widget.Icon
-	clickable       widget.Clickable
+	offIcon, onIcon image.Image
 	text            string
 	isActive        bool
 	onClick         func()
 }
 
+func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) toggleButton {
+	return toggleButton{
+		th:      th,
+		offIcon: offIcon,
+		onIcon:  onIcon,
+		text:    text,
+	}
+}
+
 func (tb *toggleButton) layout(gtx C) D {
 	var dims D
-	if tb.clickable.Clicked(gtx) {
-		tb.isActive = !tb.isActive
-	}
 	if tb.isActive {
-		dims = material.IconButton(tb.th, &tb.clickable, tb.onIcon, tb.text).Layout(gtx)
+		dims = layout.Background{}.Layout(gtx,
+			// Background
+			func(gtx C) D {
+				defer clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, 20).Push(gtx.Ops).Pop()
+				color := color.NRGBA{30, 30, 30, 255}
+				event.Op(gtx.Ops, &tb.text)
+				// Check for pointer hover
+				for {
+					ev, ok := gtx.Source.Event(pointer.Filter{
+						Target: &tb.text,
+						Kinds:  pointer.Enter | pointer.Leave,
+					})
+					if !ok {
+						break
+					}
+					if x, ok := ev.(pointer.Event); ok {
+						switch x.Kind {
+						case pointer.Enter:
+							color = color.NRGBA{15, 15, 15, 255} // lighter shade
+						case pointer.Leave:
+							color = color.NRGBA{30, 30, 30, 255}
+						}
+					}
+				}
+				pointer.CursorPointer.Add(gtx.Ops)
+				return D{Size: gtx.Constraints.Min}
+			},
+			func(gtx C) D {
+				return D{}
+			},
+		)
 	} else {
-		dims = material.IconButton(tb.th, &tb.clickable, tb.offIcon, tb.text).Layout(gtx)
+		// dims = material.IconButton(tb.th, &tb.clickable, tb.offIcon, tb.text).Layout(gtx)
 	}
 	return dims
+}
+
+type button struct {
+	th   *material.Theme
+	icon image.Image
 }
 
 type devSelector struct {
 	th *material.Theme
 	st *StateManager
 
-	camDropdownTh        *theme.Theme
-	camDropdownClickable widget.Clickable
-	camDropdown          *menu.DropdownMenu
+	camToggleBtn   toggleButton
+	camDropdownTh  *theme.Theme
+	camDropdownBtn iconButton
+	camDropdown    *menu.DropdownMenu
 
-	micDropdownTh        *theme.Theme
-	micDropdownClickable widget.Clickable
-	micDropdown          *menu.DropdownMenu
+	micToggleBtn   toggleButton
+	micDropdownTh  *theme.Theme
+	micDropdownBtn iconButton
+	micDropdown    *menu.DropdownMenu
 
 	micPaths []string
 	camPaths []string
@@ -127,7 +174,14 @@ func newDevSelector(th *material.Theme, st *StateManager, micPaths []string, cam
 		d.micPaths = micPaths
 		micDropDown = d.newMicDropdown()
 	}
+	sz := image.Pt(32, 32)
+	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
+	camOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOn), sz)
+	micOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOn), sz)
+	micOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOff), sz)
+
 	d.camDropdown = camDropDown
+	// d.camDropdownBtn =
 	d.micDropdown = micDropDown
 
 	th_ := theme.NewTheme("./fonts", nil, false)
@@ -182,22 +236,22 @@ func (d *devSelector) layout(gtx C) D {
 	}.Layout(gtx,
 		layout.Flexed(1, func(gtx C) D {
 			d.camDropdown.Update(gtx)
-			if d.camDropdownClickable.Clicked(gtx) {
+			if d.camDropdownToggleBtn.Clicked(gtx) {
 				d.camDropdown.ToggleVisibility(gtx)
 			}
 			return layout.Center.Layout(gtx, func(gtx C) D {
-				dims := material.Button(d.th, &d.camDropdownClickable, "Choose Cam").Layout(gtx)
+				dims := material.Button(d.th, &d.camDropdownToggleBtn, "Choose Cam").Layout(gtx)
 				d.camDropdown.Layout(gtx, d.camDropdownTh)
 				return dims
 			})
 		}),
 		layout.Flexed(1, func(gtx C) D {
 			d.micDropdown.Update(gtx)
-			if d.micDropdownClickable.Clicked(gtx) {
+			if d.micDropdownToggleBtn.Clicked(gtx) {
 				d.micDropdown.ToggleVisibility(gtx)
 			}
 			return layout.Center.Layout(gtx, func(gtx C) D {
-				dims := material.Button(d.th, &d.micDropdownClickable, "Choose Mic").Layout(gtx)
+				dims := material.Button(d.th, &d.micDropdownToggleBtn, "Choose Mic").Layout(gtx)
 				d.micDropdown.Layout(gtx, d.micDropdownTh)
 				return dims
 			})
