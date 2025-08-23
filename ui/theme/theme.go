@@ -1,7 +1,18 @@
 package theme
 
-import "image/color"
+import (
+	"bytes"
+	"image"
+	"image/jpeg"
 
-func BackgroundColor() color.NRGBA {
-	return color.NRGBA{R: 17, G: 17, B: 17, A: 255}
+	"github.com/deoxyimran/gioui-livekit-client/ui/res/img"
+)
+
+var decodedBg image.Image
+
+func AppBackground() image.Image {
+	if decodedBg == nil {
+		decodedBg, _ = jpeg.Decode(bytes.NewReader(img.AppBg))
+	}
+	return decodedBg
 }

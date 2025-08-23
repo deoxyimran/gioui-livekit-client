@@ -375,11 +375,12 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx,
 		// Fullscreen background
 		func(gtx C) D {
+			fmt.Println(gtx.Constraints.Max)
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
-			color := mytheme.BackgroundColor()
-			paint.ColorOp{Color: color}.Add(gtx.Ops)
+			paint.NewImageOp(mytheme.AppBackground()).Add(gtx.Ops)
+
 			paint.PaintOp{}.Add(gtx.Ops)
-			return layout.Dimensions{Size: gtx.Constraints.Max}
+			return D{Size: gtx.Constraints.Max}
 		},
 		// Main content
 		func(gtx C) D {
