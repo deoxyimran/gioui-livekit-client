@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"strings"
 
+	"gioui.org/f32"
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
@@ -107,7 +108,7 @@ func (tb *devToggleBtn) layout(gtx C) D {
 			for {
 				ev, ok := gtx.Source.Event(pointer.Filter{
 					Target: &tb.text,
-					Kinds:  pointer.Enter | pointer.Leave | pointer.Press | pointer.Release,
+					Kinds:  pointer.Enter | pointer.Leave | pointer.Press,
 				})
 				if !ok {
 					break
@@ -118,7 +119,7 @@ func (tb *devToggleBtn) layout(gtx C) D {
 						c = color.NRGBA{15, 15, 15, 255} // lighter shade
 					case pointer.Leave:
 						c = orig // back to normal
-					case pointer.Release:
+					case pointer.Press:
 						tb.isActive = !tb.isActive
 						if tb.toggleFunc != nil {
 							tb.toggleFunc()
@@ -375,10 +376,14 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 	return layout.Background{}.Layout(gtx,
 		// Fullscreen background
 		func(gtx C) D {
-			fmt.Println(gtx.Constraints.Max)
+			img := mytheme.AppBackground()
 			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
-			paint.NewImageOp(mytheme.AppBackground()).Add(gtx.Ops)
-
+			scale := f32.Affine2D{}.Scale(f32.Point{}, f32.Point{
+				X: float32(gtx.Constraints.Max.X) / float32(img.Bounds().Dx()),
+				Y: float32(gtx.Constraints.Max.Y) / float32(img.Bounds().Dy()),
+			})
+			defer op.Affine(scale).Push(gtx.Ops).Pop()
+			paint.NewImageOp(img).Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 			return D{Size: gtx.Constraints.Max}
 		},
