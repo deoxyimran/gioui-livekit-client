@@ -9,6 +9,7 @@ import (
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -85,7 +86,7 @@ type toggleButton struct {
 	offIcon, onIcon image.Image
 	text            string
 	isActive        bool
-	onClick         func()
+	onToggle        func()
 }
 
 func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) toggleButton {
@@ -98,48 +99,112 @@ func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text strin
 }
 
 func (tb *toggleButton) layout(gtx C) D {
-	var dims D
-	if tb.isActive {
-		dims = layout.Background{}.Layout(gtx,
-			// Background
-			func(gtx C) D {
-				defer clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, 20).Push(gtx.Ops).Pop()
-				color := color.NRGBA{30, 30, 30, 255}
-				event.Op(gtx.Ops, &tb.text)
-				// Check for pointer hover
-				for {
-					ev, ok := gtx.Source.Event(pointer.Filter{
-						Target: &tb.text,
-						Kinds:  pointer.Enter | pointer.Leave,
-					})
-					if !ok {
-						break
-					}
-					if x, ok := ev.(pointer.Event); ok {
-						switch x.Kind {
-						case pointer.Enter:
-							color = color.NRGBA{15, 15, 15, 255} // lighter shade
-						case pointer.Leave:
-							color = color.NRGBA{30, 30, 30, 255}
+	return layout.Background{}.Layout(gtx,
+		// Background
+		func(gtx C) D {
+			defer clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, 20).Push(gtx.Ops).Pop() // Rounded Rect
+			event.Op(gtx.Ops, &tb.text)
+			orig := color.NRGBA{30, 30, 30, 255}
+			c := orig
+			// Process pointer hover and click events
+			for {
+				ev, ok := gtx.Source.Event(pointer.Filter{
+					Target: &tb.text,
+					Kinds:  pointer.Enter | pointer.Leave | pointer.Press | pointer.Release,
+				})
+				if !ok {
+					break
+				}
+				if x, ok := ev.(pointer.Event); ok {
+					switch x.Kind {
+					case pointer.Enter:
+						c = color.NRGBA{15, 15, 15, 255} // lighter shade
+					case pointer.Leave:
+						c = orig // back to normal
+					case pointer.Release:
+						tb.isActive = !tb.isActive
+						if tb.onToggle != nil {
+							tb.onToggle()
 						}
+						gtx.Execute(op.InvalidateCmd{})
 					}
 				}
-				pointer.CursorPointer.Add(gtx.Ops)
-				return D{Size: gtx.Constraints.Min}
-			},
-			func(gtx C) D {
-				return D{}
-			},
-		)
-	} else {
-		// dims = material.IconButton(tb.th, &tb.clickable, tb.offIcon, tb.text).Layout(gtx)
-	}
-	return dims
+			}
+			paint.ColorOp{Color: c}.Add(gtx.Ops)
+			pointer.CursorPointer.Add(gtx.Ops)
+
+			return D{Size: gtx.Constraints.Min}
+		},
+		func(gtx C) D {
+			if tb.isActive {
+				return layout.Flex{
+					Axis:    layout.Horizontal,
+					Spacing: layout.SpaceEvenly,
+				}.Layout(gtx,
+					layout.Flexed(1, func(gtx C) D {
+						return widget.Image{Src: paint.NewImageOp(tb.onIcon)}.Layout(gtx)
+					}),
+				)
+			} else {
+				return layout.Flex{
+					Axis:    layout.Horizontal,
+					Spacing: layout.SpaceEvenly,
+				}.Layout(gtx,
+					layout.Flexed(1, func(gtx C) D {
+						return widget.Image{Src: paint.NewImageOp(tb.offIcon)}.Layout(gtx)
+					}),
+				)
+			}
+		},
+	)
 }
 
-type button struct {
-	th   *material.Theme
-	icon image.Image
+type iconButton struct {
+	th      *material.Theme
+	icon    image.Image
+	onClick func()
+}
+
+func newIconButton(th *material.Theme, icon image.Image) iconButton {
+	return iconButton{th: th, icon: icon}
+}
+
+func (i *iconButton) layout(gtx C) D {
+	macro := op.Record(gtx.Ops)
+	dims := widget.Image{Src: paint.NewImageOp(i.icon)}.Layout(gtx)
+	callop := macro.Stop()
+	defer clip.UniformRRect(image.Rectangle{Max: dims.Size}, 20).Push(gtx.Ops).Pop()
+	event.Op(gtx.Ops, i)
+	orig := color.NRGBA{30, 30, 30, 255}
+	c := orig
+	// Process pointer hover and click events
+	for {
+		ev, ok := gtx.Source.Event(pointer.Filter{
+			Target: i,
+			Kinds:  pointer.Enter | pointer.Leave | pointer.Press | pointer.Release,
+		})
+		if !ok {
+			break
+		}
+		if x, ok := ev.(pointer.Event); ok {
+			switch x.Kind {
+			case pointer.Enter:
+				c = color.NRGBA{15, 15, 15, 255} // lighter shade
+			case pointer.Leave:
+				c = orig // back to normal
+			case pointer.Release:
+				if i.onClick != nil {
+					i.onClick()
+				}
+				gtx.Execute(op.InvalidateCmd{})
+			}
+		}
+	}
+	paint.ColorOp{Color: c}.Add(gtx.Ops)
+	callop.Add(gtx.Ops)
+	pointer.CursorPointer.Add(gtx.Ops)
+
+	return D{Size: dims.Size}
 }
 
 type devSelector struct {
@@ -165,6 +230,20 @@ func newDevSelector(th *material.Theme, st *StateManager, micPaths []string, cam
 	d := devSelector{
 		th: th,
 	}
+	sz := image.Pt(32, 32)
+	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
+	camOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOn), sz)
+	micOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOn), sz)
+	micOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOff), sz)
+	angleDownIcon, _ := svg.LoadSvg(strings.NewReader(icons.AngleDown), sz)
+
+	th_ := theme.NewTheme("./fonts", nil, false)
+	th_.TextSize = unit.Sp(14)
+	th_.Bg = color.NRGBA{255, 255, 255, 255}
+	th_.Bg = color.NRGBA{140, 140, 140, 255}
+	d.camDropdownTh = th_
+	d.micDropdownTh = th_
+
 	var camDropDown, micDropDown *menu.DropdownMenu
 	if camPaths != nil {
 		d.camPaths = camPaths
@@ -174,22 +253,14 @@ func newDevSelector(th *material.Theme, st *StateManager, micPaths []string, cam
 		d.micPaths = micPaths
 		micDropDown = d.newMicDropdown()
 	}
-	sz := image.Pt(32, 32)
-	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
-	camOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOn), sz)
-	micOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOn), sz)
-	micOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOff), sz)
 
 	d.camDropdown = camDropDown
-	// d.camDropdownBtn =
-	d.micDropdown = micDropDown
+	d.camToggleBtn = newToggleButton(th, camOffIcon, camOnIcon, "Camera")
+	d.camDropdownBtn = newIconButton(th, angleDownIcon)
 
-	th_ := theme.NewTheme("./fonts", nil, false)
-	th_.TextSize = unit.Sp(14)
-	th_.Bg = color.NRGBA{255, 255, 255, 255}
-	th_.Bg = color.NRGBA{140, 140, 140, 255}
-	d.camDropdownTh = th_
-	d.micDropdownTh = th_
+	d.micDropdown = micDropDown
+	d.micToggleBtn = newToggleButton(th, micOffIcon, micOnIcon, "Microphone")
+	d.micDropdownBtn = newIconButton(th, angleDownIcon)
 
 	return d
 }
