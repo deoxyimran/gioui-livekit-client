@@ -44,7 +44,7 @@ func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 		stateManager:   stateManager,
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
-		deviceSelector: newDevSelector(th, stateManager, nil, nil),
+		deviceSelector: newDevSelector(th, stateManager, []string{"None"}, []string{"None"}),
 		userNameEditor: newEditor(th, "Enter a name", false),
 	}
 
@@ -83,7 +83,7 @@ type toggleButton struct {
 	offIcon, onIcon image.Image
 	text            string
 	isActive        bool
-	onToggle        func()
+	toggleFunc      func()
 }
 
 func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) toggleButton {
@@ -120,14 +120,15 @@ func (tb *toggleButton) layout(gtx C) D {
 						c = orig // back to normal
 					case pointer.Release:
 						tb.isActive = !tb.isActive
-						if tb.onToggle != nil {
-							tb.onToggle()
+						if tb.toggleFunc != nil {
+							tb.toggleFunc()
 						}
 						gtx.Execute(op.InvalidateCmd{})
 					}
 				}
 			}
 			paint.ColorOp{Color: c}.Add(gtx.Ops)
+			paint.PaintOp{}.Add(gtx.Ops)
 			pointer.CursorPointer.Add(gtx.Ops)
 
 			return D{Size: gtx.Constraints.Min}
@@ -198,6 +199,7 @@ func (i *iconButton) layout(gtx C) D {
 		}
 	}
 	paint.ColorOp{Color: c}.Add(gtx.Ops)
+	paint.PaintOp{}.Add(gtx.Ops)
 	callop.Add(gtx.Ops)
 	pointer.CursorPointer.Add(gtx.Ops)
 
@@ -225,6 +227,7 @@ type devSelector struct {
 func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPaths []string) devSelector {
 	d := devSelector{
 		th: th,
+		st: st,
 	}
 	sz := image.Pt(32, 32)
 	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
@@ -323,29 +326,46 @@ func (d *devSelector) layout(gtx C) D {
 	d.update(gtx)
 
 	dims := layout.Flex{
-		Axis: layout.Horizontal,
+		Axis:    layout.Horizontal,
+		Spacing: layout.SpaceBetween,
 	}.Layout(gtx,
+		// Microphone
 		layout.Flexed(1, func(gtx C) D {
-			d.camDropdown.Update(gtx)
-			if d.camDropdownToggleBtn.Clicked(gtx) {
-				d.camDropdown.ToggleVisibility(gtx)
-			}
-			return layout.Center.Layout(gtx, func(gtx C) D {
-				dims := material.Button(d.th, &d.camDropdownToggleBtn, "Choose Cam").Layout(gtx)
-				d.camDropdown.Layout(gtx, d.camDropdownTh)
-				return dims
-			})
+			return layout.Flex{
+				Axis: layout.Horizontal,
+			}.Layout(gtx,
+				// Toggle button
+				layout.Flexed(1, func(gtx C) D {
+					d.micToggleBtn.toggleFunc = d.toggleMic
+					return d.micToggleBtn.layout(gtx)
+				}),
+				// Dropdown
+				layout.Rigid(func(gtx C) D {
+					d.micDropdownBtn.onClick = func() {
+						d.toggleMicDropdown(gtx)
+					}
+					return layout.Center.Layout(gtx, d.micDropdownBtn.layout)
+				}),
+			)
 		}),
+		// Camera
 		layout.Flexed(1, func(gtx C) D {
-			d.micDropdown.Update(gtx)
-			if d.micDropdownToggleBtn.Clicked(gtx) {
-				d.micDropdown.ToggleVisibility(gtx)
-			}
-			return layout.Center.Layout(gtx, func(gtx C) D {
-				dims := material.Button(d.th, &d.micDropdownToggleBtn, "Choose Mic").Layout(gtx)
-				d.micDropdown.Layout(gtx, d.micDropdownTh)
-				return dims
-			})
+			return layout.Flex{
+				Axis: layout.Horizontal,
+			}.Layout(gtx,
+				// Toggle button
+				layout.Flexed(1, func(gtx C) D {
+					d.camToggleBtn.toggleFunc = d.toggleCam
+					return d.camToggleBtn.layout(gtx)
+				}),
+				// Dropdown
+				layout.Rigid(func(gtx C) D {
+					d.camDropdownBtn.onClick = func() {
+						d.toggleCamDropdown(gtx)
+					}
+					return layout.Center.Layout(gtx, d.camDropdownBtn.layout)
+				}),
+			)
 		}),
 	)
 	return dims
@@ -383,9 +403,15 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												// Video canvas
 												layout.Rigid(j.vidCanvas.Layout),
 												// Device selector
-												layout.Rigid(j.deviceSelector.layout),
-												// // Username editor
-												layout.Rigid(j.userNameEditor.layout),
+												layout.Rigid(func(gtx C) D {
+													gtx.Constraints.Max.X = 500
+													return j.deviceSelector.layout(gtx)
+												}),
+												// Username editor
+												layout.Rigid(func(gtx C) D {
+													gtx.Constraints.Max.X = 300
+													return j.userNameEditor.layout(gtx)
+												}),
 												// Take up remaining
 												layout.Flexed(1, func(gtx C) D {
 													return D{Size: gtx.Constraints.Max}
