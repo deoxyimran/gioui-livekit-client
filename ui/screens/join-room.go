@@ -78,7 +78,7 @@ func (e *editor) layout(gtx C) D {
 	)
 }
 
-type toggleButton struct {
+type devToggleBtn struct {
 	th              *material.Theme
 	offIcon, onIcon image.Image
 	text            string
@@ -86,8 +86,8 @@ type toggleButton struct {
 	toggleFunc      func()
 }
 
-func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) toggleButton {
-	return toggleButton{
+func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) devToggleBtn {
+	return devToggleBtn{
 		th:      th,
 		offIcon: offIcon,
 		onIcon:  onIcon,
@@ -95,7 +95,7 @@ func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text strin
 	}
 }
 
-func (tb *toggleButton) layout(gtx C) D {
+func (tb *devToggleBtn) layout(gtx C) D {
 	return layout.Background{}.Layout(gtx,
 		// Background
 		func(gtx C) D {
@@ -210,12 +210,12 @@ type devSelector struct {
 	th *material.Theme
 	st *state.App
 
-	camToggleBtn   toggleButton
+	camToggleBtn   devToggleBtn
 	camDropdownBtn iconButton
 	camDropdownTh  *theme.Theme
 	camDropdown    *menu.DropdownMenu
 
-	micToggleBtn   toggleButton
+	micToggleBtn   devToggleBtn
 	micDropdownBtn iconButton
 	micDropdownTh  *theme.Theme
 	micDropdown    *menu.DropdownMenu
