@@ -18,6 +18,7 @@ import (
 	"github.com/deoxyimran/gioui-livekit-client/ui/components"
 	"github.com/deoxyimran/gioui-livekit-client/ui/mediasrcs/video"
 	"github.com/deoxyimran/gioui-livekit-client/ui/res/icons"
+	"github.com/deoxyimran/gioui-livekit-client/ui/state"
 	mytheme "github.com/deoxyimran/gioui-livekit-client/ui/theme"
 	mylayout "github.com/deoxyimran/gioui-livekit-client/ui/utils/layout"
 	"github.com/deoxyimran/gioui-livekit-client/ui/utils/svg"
@@ -32,11 +33,11 @@ type JoinRoom struct {
 	deviceSelector   devSelector
 	joinRoomClickble widget.Clickable
 	// States/control vars
-	stateManager *StateManager
+	stateManager *state.App
 	vidCanvas    components.VideoCanvas
 }
 
-func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
+func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 	th := material.NewTheme()
 	vs := video.NewWebcamSource("")
 	j := &JoinRoom{
@@ -44,7 +45,7 @@ func NewJoinRoomScreen(stateManager *StateManager) *JoinRoom {
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
 		deviceSelector: newDevSelector(th, stateManager, nil, nil),
-		userNameEditor: newEditor(th, "Enter a name", false, 300),
+		userNameEditor: newEditor(th, "Enter a name", false),
 	}
 
 	return j
@@ -59,17 +60,13 @@ type editor struct {
 	placeholder string
 	isPassword  bool
 	edit        widget.Editor
-	w           int
 }
 
-func newEditor(th *material.Theme, placeholder string, isPassword bool, w int) editor {
-	return editor{th: th, placeholder: placeholder, isPassword: isPassword, w: w}
+func newEditor(th *material.Theme, placeholder string, isPassword bool) editor {
+	return editor{th: th, placeholder: placeholder, isPassword: isPassword}
 }
 
 func (e *editor) layout(gtx C) D {
-	c := gtx.Constraints
-	c.Max.X, c.Min.X = e.w, e.w
-	gtx.Constraints = c
 	edit := material.Editor(e.th, &e.edit, e.placeholder)
 	edit.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	edit.HintColor = color.NRGBA{R: 135, G: 135, B: 135, A: 220}
@@ -209,24 +206,23 @@ func (i *iconButton) layout(gtx C) D {
 
 type devSelector struct {
 	th *material.Theme
-	st *StateManager
+	st *state.App
 
 	camToggleBtn   toggleButton
-	camDropdownTh  *theme.Theme
 	camDropdownBtn iconButton
+	camDropdownTh  *theme.Theme
 	camDropdown    *menu.DropdownMenu
 
 	micToggleBtn   toggleButton
-	micDropdownTh  *theme.Theme
 	micDropdownBtn iconButton
+	micDropdownTh  *theme.Theme
 	micDropdown    *menu.DropdownMenu
 
 	micPaths []string
 	camPaths []string
-	w        int
 }
 
-func newDevSelector(th *material.Theme, st *StateManager, micPaths []string, camPaths []string) devSelector {
+func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPaths []string) devSelector {
 	d := devSelector{
 		th: th,
 	}
@@ -301,7 +297,31 @@ func (d *devSelector) newMicDropdown() *menu.DropdownMenu {
 	return menu.NewDropdownMenu(options)
 }
 
+func (d *devSelector) toggleMic() {
+	d.st.MicOn = !d.st.MicOn
+}
+
+func (d *devSelector) toggleMicDropdown(gtx C) {
+	d.micDropdown.ToggleVisibility(gtx)
+}
+
+func (d *devSelector) toggleCam() {
+	d.st.CameraOn = !d.st.CameraOn
+}
+
+func (d *devSelector) toggleCamDropdown(gtx C) {
+	d.camDropdown.ToggleVisibility(gtx)
+}
+
+func (d *devSelector) update(gtx C) {
+	d.camDropdown.Update(gtx)
+	d.micDropdown.Update(gtx)
+}
+
 func (d *devSelector) layout(gtx C) D {
+	// Update states
+	d.update(gtx)
+
 	dims := layout.Flex{
 		Axis: layout.Horizontal,
 	}.Layout(gtx,

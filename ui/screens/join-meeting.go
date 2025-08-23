@@ -11,6 +11,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/deoxyimran/gioui-livekit-client/ui/state"
 	mylayout "github.com/deoxyimran/gioui-livekit-client/ui/utils/layout"
 )
 
@@ -20,12 +21,12 @@ type (
 )
 
 type JoinMeeting struct {
-	stateManager   *StateManager
+	stateManager   *state.App
 	th             *material.Theme
 	joinMeetingBtn widget.Clickable
 }
 
-func NewJoinMeetingScreen(stateManager *StateManager) *JoinMeeting {
+func NewJoinMeetingScreen(stateManager *state.App) *JoinMeeting {
 	return &JoinMeeting{
 		th:           material.NewTheme(),
 		stateManager: stateManager,
@@ -35,8 +36,8 @@ func NewJoinMeetingScreen(stateManager *StateManager) *JoinMeeting {
 func (j *JoinMeeting) switchScreen(screenPointer *Screen) {
 	// Switch to the Join Room Screen
 	*screenPointer = JOIN_ROOM
-	if _, ok := j.stateManager.GetState(JOIN_ROOM).(*AppStateMeetingScreen); ok {
-	}
+	// if _, ok := j.stateManager.GetState(JOIN_ROOM).(*StateMeetingScreen); ok {
+	// }
 
 }
 
