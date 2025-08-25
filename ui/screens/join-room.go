@@ -13,6 +13,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -79,85 +80,6 @@ func (e *editor) layout(gtx C) D {
 	)
 }
 
-type devToggleBtn struct {
-	th              *material.Theme
-	offIcon, onIcon image.Image
-	text            string
-	isActive        bool
-	toggleFunc      func()
-}
-
-func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) devToggleBtn {
-	return devToggleBtn{
-		th:      th,
-		offIcon: offIcon,
-		onIcon:  onIcon,
-		text:    text,
-	}
-}
-
-func (tb *devToggleBtn) layout(gtx C) D {
-	return layout.Background{}.Layout(gtx,
-		// Background
-		func(gtx C) D {
-			defer clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, 20).Push(gtx.Ops).Pop() // Rounded Rect
-			event.Op(gtx.Ops, &tb.text)
-			orig := color.NRGBA{30, 30, 30, 255}
-			c := orig
-			// Process pointer hover and click events
-			for {
-				ev, ok := gtx.Source.Event(pointer.Filter{
-					Target: &tb.text,
-					Kinds:  pointer.Enter | pointer.Leave | pointer.Press,
-				})
-				if !ok {
-					break
-				}
-				if x, ok := ev.(pointer.Event); ok {
-					switch x.Kind {
-					case pointer.Enter:
-						c = color.NRGBA{15, 15, 15, 255} // lighter shade
-					case pointer.Leave:
-						c = orig // back to normal
-					case pointer.Press:
-						tb.isActive = !tb.isActive
-						if tb.toggleFunc != nil {
-							tb.toggleFunc()
-						}
-						gtx.Execute(op.InvalidateCmd{})
-					}
-				}
-			}
-			paint.ColorOp{Color: c}.Add(gtx.Ops)
-			paint.PaintOp{}.Add(gtx.Ops)
-			pointer.CursorPointer.Add(gtx.Ops)
-
-			return D{Size: gtx.Constraints.Min}
-		},
-		func(gtx C) D {
-			if tb.isActive {
-				return layout.Flex{
-					Axis:    layout.Horizontal,
-					Spacing: layout.SpaceEvenly,
-				}.Layout(gtx,
-					layout.Flexed(1, func(gtx C) D {
-						return widget.Image{Src: paint.NewImageOp(tb.onIcon)}.Layout(gtx)
-					}),
-				)
-			} else {
-				return layout.Flex{
-					Axis:    layout.Horizontal,
-					Spacing: layout.SpaceEvenly,
-				}.Layout(gtx,
-					layout.Flexed(1, func(gtx C) D {
-						return widget.Image{Src: paint.NewImageOp(tb.offIcon)}.Layout(gtx)
-					}),
-				)
-			}
-		},
-	)
-}
-
 type iconButton struct {
 	th      *material.Theme
 	icon    image.Image
@@ -207,6 +129,108 @@ func (i *iconButton) layout(gtx C) D {
 	return D{Size: dims.Size}
 }
 
+type devToggleBtn struct {
+	th              *material.Theme
+	offIcon, onIcon image.Image
+	text            string
+	isActive        bool
+	toggleFunc      func()
+}
+
+func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) devToggleBtn {
+	return devToggleBtn{
+		th:      th,
+		offIcon: offIcon,
+		onIcon:  onIcon,
+		text:    text,
+	}
+}
+
+func (tb *devToggleBtn) layout(gtx C) D {
+	return layout.Background{}.Layout(gtx,
+		// Background
+		func(gtx C) D {
+			defer clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, 5).Push(gtx.Ops).Pop() // Rounded Rect
+			event.Op(gtx.Ops, &tb.text)
+			orig := color.NRGBA{30, 30, 30, 255}
+			c := orig
+			// Process pointer hover and click events
+			for {
+				ev, ok := gtx.Source.Event(pointer.Filter{
+					Target: &tb.text,
+					Kinds:  pointer.Enter | pointer.Leave | pointer.Press,
+				})
+				if !ok {
+					break
+				}
+				if x, ok := ev.(pointer.Event); ok {
+					switch x.Kind {
+					case pointer.Enter:
+						c = color.NRGBA{15, 15, 15, 255} // lighter shade
+					case pointer.Leave:
+						c = orig // back to normal
+					case pointer.Press:
+						tb.isActive = !tb.isActive
+						if tb.toggleFunc != nil {
+							tb.toggleFunc()
+						}
+						gtx.Execute(op.InvalidateCmd{})
+					}
+				}
+			}
+			paint.ColorOp{Color: c}.Add(gtx.Ops)
+			paint.PaintOp{}.Add(gtx.Ops)
+			pointer.CursorPointer.Add(gtx.Ops)
+
+			return D{Size: gtx.Constraints.Min}
+		},
+		func(gtx C) D {
+			if tb.isActive {
+				return layout.Flex{
+					Axis:    layout.Horizontal,
+					Spacing: layout.SpaceEvenly,
+				}.Layout(gtx,
+					layout.Flexed(1, func(gtx C) D {
+						return layout.Flex{
+							Axis:    layout.Horizontal,
+							Spacing: layout.SpaceBetween,
+						}.Layout(gtx,
+							layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.onIcon)}.Layout),
+							layout.Flexed(1, func(gtx C) D {
+								lb := material.Label(tb.th, unit.Sp(14), tb.text)
+								lb.Color = color.NRGBA{255, 255, 255, 255}
+								lb.Alignment = text.Middle
+								return lb.Layout(gtx)
+							}),
+						)
+					}),
+				)
+			} else {
+				return layout.Flex{
+					Axis:    layout.Horizontal,
+					Spacing: layout.SpaceEvenly,
+				}.Layout(gtx,
+					layout.Flexed(1, func(gtx C) D {
+						return layout.Flex{
+							Axis:      layout.Horizontal,
+							Alignment: layout.Middle,
+							Spacing:   layout.SpaceBetween,
+						}.Layout(gtx,
+							layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.offIcon)}.Layout),
+							layout.Flexed(1, func(gtx C) D {
+								lb := material.Label(tb.th, unit.Sp(14), tb.text)
+								lb.Color = color.NRGBA{255, 255, 255, 255}
+								lb.Alignment = text.Middle
+								return lb.Layout(gtx)
+							}),
+						)
+					}),
+				)
+			}
+		},
+	)
+}
+
 type devSelector struct {
 	th *material.Theme
 	st *state.App
@@ -230,7 +254,7 @@ func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPat
 		th: th,
 		st: st,
 	}
-	sz := image.Pt(32, 32)
+	sz := image.Pt(24, 24)
 	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
 	camOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOn), sz)
 	micOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOn), sz)
