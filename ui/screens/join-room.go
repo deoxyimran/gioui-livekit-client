@@ -94,7 +94,7 @@ func (i *iconButton) layout(gtx C) D {
 	macro := op.Record(gtx.Ops)
 	dims := widget.Image{Src: paint.NewImageOp(i.icon)}.Layout(gtx)
 	callop := macro.Stop()
-	defer clip.UniformRRect(image.Rectangle{Max: dims.Size}, 20).Push(gtx.Ops).Pop()
+	defer clip.UniformRRect(image.Rectangle{Max: dims.Size}, 5).Push(gtx.Ops).Pop()
 	event.Op(gtx.Ops, i)
 	orig := color.NRGBA{30, 30, 30, 255}
 	c := orig
@@ -186,45 +186,54 @@ func (tb *devToggleBtn) layout(gtx C) D {
 		},
 		func(gtx C) D {
 			if tb.isActive {
-				return layout.Flex{
-					Axis:    layout.Horizontal,
-					Spacing: layout.SpaceEvenly,
-				}.Layout(gtx,
-					layout.Flexed(1, func(gtx C) D {
-						return layout.Flex{
-							Axis:    layout.Horizontal,
-							Spacing: layout.SpaceBetween,
-						}.Layout(gtx,
-							layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.onIcon)}.Layout),
-							layout.Flexed(1, func(gtx C) D {
-								lb := material.Label(tb.th, unit.Sp(14), tb.text)
-								lb.Color = color.NRGBA{255, 255, 255, 255}
-								lb.Alignment = text.Middle
-								return lb.Layout(gtx)
-							}),
-						)
-					}),
-				)
-			} else {
-				return layout.Flex{
-					Axis:    layout.Horizontal,
-					Spacing: layout.SpaceEvenly,
-				}.Layout(gtx,
-					layout.Flexed(1, func(gtx C) D {
+				return layout.UniformInset(unit.Dp(7)).Layout(gtx,
+					func(gtx C) D {
 						return layout.Flex{
 							Axis:      layout.Horizontal,
 							Alignment: layout.Middle,
-							Spacing:   layout.SpaceBetween,
+							Spacing:   layout.SpaceEvenly,
 						}.Layout(gtx,
-							layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.offIcon)}.Layout),
 							layout.Flexed(1, func(gtx C) D {
-								lb := material.Label(tb.th, unit.Sp(14), tb.text)
-								lb.Color = color.NRGBA{255, 255, 255, 255}
-								lb.Alignment = text.Middle
-								return lb.Layout(gtx)
+								return layout.Flex{
+									Axis:      layout.Horizontal,
+									Alignment: layout.Middle,
+									Spacing:   layout.SpaceBetween,
+								}.Layout(gtx,
+									layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.onIcon)}.Layout),
+									layout.Flexed(1, func(gtx C) D {
+										lb := material.Label(tb.th, unit.Sp(14), tb.text)
+										lb.Color = color.NRGBA{255, 255, 255, 255}
+										lb.Alignment = text.Middle
+										return lb.Layout(gtx)
+									}),
+								)
 							}),
 						)
-					}),
+					},
+				)
+			} else {
+				return layout.UniformInset(unit.Dp(7)).Layout(gtx,
+					func(gtx C) D {
+						return layout.Flex{
+							Axis:    layout.Horizontal,
+							Spacing: layout.SpaceEvenly,
+						}.Layout(gtx,
+							layout.Flexed(1, func(gtx C) D {
+								return layout.Flex{
+									Axis:    layout.Horizontal,
+									Spacing: layout.SpaceBetween,
+								}.Layout(gtx,
+									layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.offIcon)}.Layout),
+									layout.Flexed(1, func(gtx C) D {
+										lb := material.Label(tb.th, unit.Sp(14), tb.text)
+										lb.Color = color.NRGBA{255, 255, 255, 255}
+										lb.Alignment = text.Middle
+										return lb.Layout(gtx)
+									}),
+								)
+							}),
+						)
+					},
 				)
 			}
 		},
@@ -254,7 +263,7 @@ func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPat
 		th: th,
 		st: st,
 	}
-	sz := image.Pt(24, 24)
+	sz := image.Pt(20, 20)
 	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
 	camOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOn), sz)
 	micOnIcon, _ := svg.LoadSvg(strings.NewReader(icons.MicOn), sz)
@@ -361,10 +370,11 @@ func (d *devSelector) layout(gtx C) D {
 			}.Layout(gtx,
 				// Toggle button
 				layout.Flexed(1, func(gtx C) D {
+					fmt.Println(gtx.Constraints.Max.Y)
 					d.micToggleBtn.toggleFunc = d.toggleMic
 					return d.micToggleBtn.layout(gtx)
 				}),
-				// Dropdown
+				// Dropdown btn and menu
 				layout.Rigid(func(gtx C) D {
 					d.micDropdownBtn.onClick = func() {
 						d.toggleMicDropdown(gtx)
@@ -383,7 +393,7 @@ func (d *devSelector) layout(gtx C) D {
 					d.camToggleBtn.toggleFunc = d.toggleCam
 					return d.camToggleBtn.layout(gtx)
 				}),
-				// Dropdown
+				// Dropdown btn and menu
 				layout.Rigid(func(gtx C) D {
 					d.camDropdownBtn.onClick = func() {
 						d.toggleCamDropdown(gtx)
@@ -430,19 +440,22 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												layout.Flexed(1, func(gtx C) D {
 													return D{Size: gtx.Constraints.Max}
 												}),
-												// Video canvas
+												// Video canvas layout
 												layout.Rigid(j.vidCanvas.Layout),
-												// Device selector
+												// Device selector layout
 												layout.Rigid(func(gtx C) D {
-													gtx.Constraints.Max.X = 500
-													return j.deviceSelector.layout(gtx)
+													return layout.Inset{Top: unit.Dp(8)}.Layout(gtx, func(gtx C) D {
+														gtx.Constraints.Max.X = 500
+														gtx.Constraints.Min.Y = 40
+														return j.deviceSelector.layout(gtx)
+													})
 												}),
-												// Username editor
+												// Username editor layout
 												layout.Rigid(func(gtx C) D {
 													gtx.Constraints.Max.X = 300
 													return j.userNameEditor.layout(gtx)
 												}),
-												// Take up remaining
+												// Take up remaining layout
 												layout.Flexed(1, func(gtx C) D {
 													return D{Size: gtx.Constraints.Max}
 												}),
