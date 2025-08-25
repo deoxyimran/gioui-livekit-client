@@ -189,24 +189,15 @@ func (tb *devToggleBtn) layout(gtx C) D {
 				return layout.UniformInset(unit.Dp(7)).Layout(gtx,
 					func(gtx C) D {
 						return layout.Flex{
-							Axis:      layout.Horizontal,
-							Alignment: layout.Middle,
-							Spacing:   layout.SpaceEvenly,
+							Axis:    layout.Horizontal,
+							Spacing: layout.SpaceEvenly,
 						}.Layout(gtx,
+							layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.onIcon), Position: layout.Center}.Layout),
 							layout.Flexed(1, func(gtx C) D {
-								return layout.Flex{
-									Axis:      layout.Horizontal,
-									Alignment: layout.Middle,
-									Spacing:   layout.SpaceBetween,
-								}.Layout(gtx,
-									layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.onIcon)}.Layout),
-									layout.Flexed(1, func(gtx C) D {
-										lb := material.Label(tb.th, unit.Sp(14), tb.text)
-										lb.Color = color.NRGBA{255, 255, 255, 255}
-										lb.Alignment = text.Middle
-										return lb.Layout(gtx)
-									}),
-								)
+								lb := material.Label(tb.th, unit.Sp(14), tb.text)
+								lb.Color = color.NRGBA{255, 255, 255, 255}
+								lb.Alignment = text.Middle
+								return layout.Center.Layout(gtx, lb.Layout)
 							}),
 						)
 					},
@@ -218,19 +209,12 @@ func (tb *devToggleBtn) layout(gtx C) D {
 							Axis:    layout.Horizontal,
 							Spacing: layout.SpaceEvenly,
 						}.Layout(gtx,
+							layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.offIcon), Position: layout.Center}.Layout),
 							layout.Flexed(1, func(gtx C) D {
-								return layout.Flex{
-									Axis:    layout.Horizontal,
-									Spacing: layout.SpaceBetween,
-								}.Layout(gtx,
-									layout.Rigid(widget.Image{Src: paint.NewImageOp(tb.offIcon)}.Layout),
-									layout.Flexed(1, func(gtx C) D {
-										lb := material.Label(tb.th, unit.Sp(14), tb.text)
-										lb.Color = color.NRGBA{255, 255, 255, 255}
-										lb.Alignment = text.Middle
-										return lb.Layout(gtx)
-									}),
-								)
+								lb := material.Label(tb.th, unit.Sp(14), tb.text)
+								lb.Color = color.NRGBA{255, 255, 255, 255}
+								lb.Alignment = text.Middle
+								return layout.Center.Layout(gtx, lb.Layout)
 							}),
 						)
 					},
@@ -374,6 +358,8 @@ func (d *devSelector) layout(gtx C) D {
 					d.micToggleBtn.toggleFunc = d.toggleMic
 					return d.micToggleBtn.layout(gtx)
 				}),
+				// Spacer
+				layout.Rigid(layout.Spacer{Width: unit.Dp(3)}.Layout),
 				// Dropdown btn and menu
 				layout.Rigid(func(gtx C) D {
 					d.micDropdownBtn.onClick = func() {
@@ -381,6 +367,8 @@ func (d *devSelector) layout(gtx C) D {
 					}
 					return layout.Center.Layout(gtx, d.micDropdownBtn.layout)
 				}),
+				// Spacer
+				layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
 			)
 		}),
 		// Camera
@@ -393,6 +381,8 @@ func (d *devSelector) layout(gtx C) D {
 					d.camToggleBtn.toggleFunc = d.toggleCam
 					return d.camToggleBtn.layout(gtx)
 				}),
+				// Spacer
+				layout.Rigid(layout.Spacer{Width: unit.Dp(3)}.Layout),
 				// Dropdown btn and menu
 				layout.Rigid(func(gtx C) D {
 					d.camDropdownBtn.onClick = func() {
@@ -400,6 +390,8 @@ func (d *devSelector) layout(gtx C) D {
 					}
 					return layout.Center.Layout(gtx, d.camDropdownBtn.layout)
 				}),
+				// Spacer
+				layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
 			)
 		}),
 	)
@@ -446,7 +438,7 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												layout.Rigid(func(gtx C) D {
 													return layout.Inset{Top: unit.Dp(8)}.Layout(gtx, func(gtx C) D {
 														gtx.Constraints.Max.X = 500
-														gtx.Constraints.Min.Y = 40
+														gtx.Constraints.Min.Y = 25
 														return j.deviceSelector.layout(gtx)
 													})
 												}),
