@@ -32,7 +32,7 @@ type JoinRoom struct {
 	// Widgets
 	th               *material.Theme
 	userNameEditor   editor
-	deviceSelector   devSelector
+	deviceSelector   deviceSetting
 	joinRoomClickble widget.Clickable
 	// States/control vars
 	stateManager *state.App
@@ -46,7 +46,7 @@ func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 		stateManager:   stateManager,
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
-		deviceSelector: newDevSelector(th, stateManager, []string{"None"}, []string{"None"}),
+		deviceSelector: newDevSelector(th, stateManager, []string{"None", "None", "None", "None", "None", "None", "None", "None", "None", "None", "None", "None"}, []string{"None"}),
 		userNameEditor: newEditor(th, "Enter a name", false),
 	}
 
@@ -91,41 +91,48 @@ func newIconButton(th *material.Theme, icon image.Image) iconButton {
 }
 
 func (i *iconButton) layout(gtx C) D {
-	macro := op.Record(gtx.Ops)
-	dims := widget.Image{Src: paint.NewImageOp(i.icon)}.Layout(gtx)
-	callop := macro.Stop()
-	defer clip.UniformRRect(image.Rectangle{Max: dims.Size}, 5).Push(gtx.Ops).Pop()
-	event.Op(gtx.Ops, i)
-	orig := color.NRGBA{30, 30, 30, 255}
-	c := orig
-	// Process pointer hover and click events
-	for {
-		ev, ok := gtx.Source.Event(pointer.Filter{
-			Target: i,
-			Kinds:  pointer.Enter | pointer.Leave | pointer.Press | pointer.Release,
-		})
-		if !ok {
-			break
-		}
-		if x, ok := ev.(pointer.Event); ok {
-			switch x.Kind {
-			case pointer.Enter:
-				c = color.NRGBA{15, 15, 15, 255} // lighter shade
-			case pointer.Leave:
-				c = orig // back to normal
-			case pointer.Release:
-				if i.onClick != nil {
-					i.onClick()
+	dims := layout.Background{}.Layout(gtx,
+		// Background
+		func(gtx C) D {
+			defer clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, 5).Push(gtx.Ops).Pop()
+			event.Op(gtx.Ops, i)
+			orig := color.NRGBA{30, 30, 30, 255}
+			c := orig
+			// Process pointer hover and click events
+			for {
+				ev, ok := gtx.Source.Event(pointer.Filter{
+					Target: i,
+					Kinds:  pointer.Enter | pointer.Leave | pointer.Press | pointer.Release,
+				})
+				if !ok {
+					break
 				}
-				gtx.Execute(op.InvalidateCmd{})
+				if x, ok := ev.(pointer.Event); ok {
+					switch x.Kind {
+					case pointer.Enter:
+						c = color.NRGBA{15, 15, 15, 255} // lighter shade
+					case pointer.Leave:
+						c = orig // back to normal
+					case pointer.Release:
+						if i.onClick != nil {
+							i.onClick()
+						}
+						gtx.Execute(op.InvalidateCmd{})
+					}
+				}
 			}
-		}
-	}
-	paint.ColorOp{Color: c}.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-	callop.Add(gtx.Ops)
-	pointer.CursorPointer.Add(gtx.Ops)
+			paint.ColorOp{Color: c}.Add(gtx.Ops)
+			paint.PaintOp{}.Add(gtx.Ops)
+			pointer.CursorPointer.Add(gtx.Ops)
 
+			return D{Size: gtx.Constraints.Min}
+		},
+		// Icon
+		func(gtx C) D {
+			fmt.Println("Icon cmin: ", gtx.Constraints.Min)
+			return layout.Inset{Left: unit.Dp(3), Right: unit.Dp(3)}.Layout(gtx, widget.Image{Src: paint.NewImageOp(i.icon), Position: layout.Center}.Layout)
+		},
+	)
 	return D{Size: dims.Size}
 }
 
@@ -224,7 +231,7 @@ func (tb *devToggleBtn) layout(gtx C) D {
 	)
 }
 
-type devSelector struct {
+type deviceSetting struct {
 	th *material.Theme
 	st *state.App
 
@@ -242,8 +249,8 @@ type devSelector struct {
 	camPaths []string
 }
 
-func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPaths []string) devSelector {
-	d := devSelector{
+func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPaths []string) deviceSetting {
+	d := deviceSetting{
 		th: th,
 		st: st,
 	}
@@ -282,7 +289,7 @@ func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPat
 	return d
 }
 
-func (d *devSelector) newCamDropdown() *menu.DropdownMenu {
+func (d *deviceSetting) newCamDropdown() *menu.DropdownMenu {
 	options := [][]menu.MenuOption{}
 	options = append(options, []menu.MenuOption{})
 	for i, v := range d.camPaths {
@@ -300,7 +307,7 @@ func (d *devSelector) newCamDropdown() *menu.DropdownMenu {
 	return menu.NewDropdownMenu(options)
 }
 
-func (d *devSelector) newMicDropdown() *menu.DropdownMenu {
+func (d *deviceSetting) newMicDropdown() *menu.DropdownMenu {
 	options := [][]menu.MenuOption{}
 	options = append(options, []menu.MenuOption{})
 	for i, v := range d.micPaths {
@@ -318,28 +325,28 @@ func (d *devSelector) newMicDropdown() *menu.DropdownMenu {
 	return menu.NewDropdownMenu(options)
 }
 
-func (d *devSelector) toggleMic() {
+func (d *deviceSetting) toggleMic() {
 	d.st.MicOn = !d.st.MicOn
 }
 
-func (d *devSelector) toggleMicDropdown(gtx C) {
+func (d *deviceSetting) toggleMicDropdown(gtx C) {
 	d.micDropdown.ToggleVisibility(gtx)
 }
 
-func (d *devSelector) toggleCam() {
+func (d *deviceSetting) toggleCam() {
 	d.st.CameraOn = !d.st.CameraOn
 }
 
-func (d *devSelector) toggleCamDropdown(gtx C) {
+func (d *deviceSetting) toggleCamDropdown(gtx C) {
 	d.camDropdown.ToggleVisibility(gtx)
 }
 
-func (d *devSelector) update(gtx C) {
+func (d *deviceSetting) update(gtx C) {
 	d.camDropdown.Update(gtx)
 	d.micDropdown.Update(gtx)
 }
 
-func (d *devSelector) layout(gtx C) D {
+func (d *deviceSetting) layout(gtx C, menuctx C) D {
 	// Update states
 	d.update(gtx)
 
@@ -354,7 +361,6 @@ func (d *devSelector) layout(gtx C) D {
 			}.Layout(gtx,
 				// Toggle button
 				layout.Flexed(1, func(gtx C) D {
-					fmt.Println(gtx.Constraints.Max.Y)
 					d.micToggleBtn.toggleFunc = d.toggleMic
 					return d.micToggleBtn.layout(gtx)
 				}),
@@ -365,7 +371,8 @@ func (d *devSelector) layout(gtx C) D {
 					d.micDropdownBtn.onClick = func() {
 						d.toggleMicDropdown(gtx)
 					}
-					return layout.Center.Layout(gtx, d.micDropdownBtn.layout)
+					d.micDropdown.Layout(menuctx, d.micDropdownTh)
+					return d.micDropdownBtn.layout(gtx)
 				}),
 				// Spacer
 				layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
@@ -388,7 +395,8 @@ func (d *devSelector) layout(gtx C) D {
 					d.camDropdownBtn.onClick = func() {
 						d.toggleCamDropdown(gtx)
 					}
-					return layout.Center.Layout(gtx, d.camDropdownBtn.layout)
+					d.camDropdown.Layout(menuctx, d.camDropdownTh)
+					return d.camDropdownBtn.layout(gtx)
 				}),
 				// Spacer
 				layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
@@ -437,9 +445,14 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 												// Device selector layout
 												layout.Rigid(func(gtx C) D {
 													return layout.Inset{Top: unit.Dp(8)}.Layout(gtx, func(gtx C) D {
-														gtx.Constraints.Max.X = 500
-														gtx.Constraints.Min.Y = 25
-														return j.deviceSelector.layout(gtx)
+														menuctx := gtx
+														menuctx.Constraints.Max.Y = 200
+														fmt.Println("Menuctx maxcons: ", menuctx.Constraints.Max)
+														c := gtx.Constraints
+														c.Max.X = 500
+														c.Min.Y, c.Max.Y = 32, 32
+														gtx.Constraints = c
+														return j.deviceSelector.layout(gtx, menuctx)
 													})
 												}),
 												// Username editor layout
