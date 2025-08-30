@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"runtime"
 	"strings"
 
 	"gioui.org/f32"
@@ -35,14 +36,28 @@ type JoinRoom struct {
 	deviceSelector   deviceSetting
 	joinRoomClickble widget.Clickable
 	// States/control vars
+	vidFormat    string
 	stateManager *state.App
 	vidCanvas    components.VideoCanvas
+}
+
+type vidDevice struct {
+	name string
+	desc string
 }
 
 func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 	th := material.NewTheme()
 	vs := video.NewWebcamSource("")
+	var vidFormat string
+	switch runtime.GOOS {
+	case "linux":
+		vidFormat = "v4l2"
+	case "windows":
+		vidFormat = "dshow"
+	}
 	j := &JoinRoom{
+		vidFormat:      vidFormat,
 		stateManager:   stateManager,
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
@@ -51,6 +66,10 @@ func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 	}
 
 	return j
+}
+
+func (j *JoinRoom) listVideoDevices() []vidDevice {
+
 }
 
 func (j *JoinRoom) StopVideoCapture() {
