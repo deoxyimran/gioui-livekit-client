@@ -1,9 +1,12 @@
 package screens
 
 import (
+	"bufio"
 	"fmt"
 	"image"
 	"image/color"
+	"log"
+	"os/exec"
 	"runtime"
 	"strings"
 
@@ -36,7 +39,6 @@ type JoinRoom struct {
 	deviceSelector   deviceSetting
 	joinRoomClickble widget.Clickable
 	// States/control vars
-	vidFormat    string
 	stateManager *state.App
 	vidCanvas    components.VideoCanvas
 }
@@ -49,27 +51,52 @@ type vidDevice struct {
 func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 	th := material.NewTheme()
 	vs := video.NewWebcamSource("")
-	var vidFormat string
-	switch runtime.GOOS {
-	case "linux":
-		vidFormat = "v4l2"
-	case "windows":
-		vidFormat = "dshow"
-	}
 	j := &JoinRoom{
-		vidFormat:      vidFormat,
 		stateManager:   stateManager,
 		th:             th,
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
-		deviceSelector: newDevSelector(th, stateManager, []string{"None", "None", "None", "None", "None", "None", "None", "None", "None", "None", "None", "None"}, []string{"None"}),
 		userNameEditor: newEditor(th, "Enter a name", false),
 	}
-
+	j.deviceSelector = newDevSelector(th, stateManager, []string{"None"}, j.listVideoDevices())
 	return j
 }
 
-func (j *JoinRoom) listVideoDevices() []vidDevice {
-
+func (j *JoinRoom) listVideoDevices() (devices []vidDevice) {
+	var cmd *exec.Cmd
+	// var vidFormat string
+	switch runtime.GOOS {
+	case "linux":
+		// vidFormat = "v4l2"
+		cmd = exec.Command("v4l2-ctl", "--list-devices") // needs v4l-utils
+	case "windows":
+		// vidFormat = "dshow"
+		cmd = exec.Command("ffmpeg", "-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy")
+	}
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Println("Error listing video devices: ", err)
+		return nil
+	}
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	var taken bool
+	var device vidDevice
+	switch runtime.GOOS {
+	case "linux":
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if strings.HasSuffix(line, ":") {
+				// new device block
+				taken = false
+				device.desc = strings.TrimSpace(strings.TrimSuffix(line, ":"))
+			} else if strings.HasPrefix(line, "/dev/video") && !taken {
+				taken = true // only first /dev/videoN per device
+				device.name = strings.TrimSpace(line)
+				devices = append(devices, device)
+			}
+		}
+	case "windows":
+	}
+	return
 }
 
 func (j *JoinRoom) StopVideoCapture() {
@@ -264,11 +291,11 @@ type deviceSetting struct {
 	micDropdownTh  *theme.Theme
 	micDropdown    *menu.DropdownMenu
 
-	micPaths []string
-	camPaths []string
+	micPaths   []string
+	vidDevices []vidDevice
 }
 
-func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPaths []string) deviceSetting {
+func newDevSelector(th *material.Theme, st *state.App, micPaths []string, vidDevices []vidDevice) deviceSetting {
 	d := deviceSetting{
 		th: th,
 		st: st,
@@ -287,21 +314,14 @@ func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPat
 	d.camDropdownTh = th_
 	d.micDropdownTh = th_
 
-	var camDropDown, micDropDown *menu.DropdownMenu
-	if camPaths != nil {
-		d.camPaths = camPaths
-		camDropDown = d.newCamDropdown()
-	}
-	if micPaths != nil {
-		d.micPaths = micPaths
-		micDropDown = d.newMicDropdown()
-	}
+	d.vidDevices = vidDevices
+	d.micPaths = micPaths
 
-	d.camDropdown = camDropDown
+	d.camDropdown = d.newCamDropdown()
 	d.camToggleBtn = newToggleButton(th, camOffIcon, camOnIcon, "Camera")
 	d.camDropdownBtn = newIconButton(th, angleDownIcon)
 
-	d.micDropdown = micDropDown
+	d.micDropdown = d.newMicDropdown()
 	d.micToggleBtn = newToggleButton(th, micOffIcon, micOnIcon, "Microphone")
 	d.micDropdownBtn = newIconButton(th, angleDownIcon)
 
@@ -311,10 +331,13 @@ func newDevSelector(th *material.Theme, st *state.App, micPaths []string, camPat
 func (d *deviceSetting) newCamDropdown() *menu.DropdownMenu {
 	options := [][]menu.MenuOption{}
 	options = append(options, []menu.MenuOption{})
-	for i, v := range d.camPaths {
+	if d.vidDevices == nil {
+		d.vidDevices = []vidDevice{{name: "None", desc: "No camera found"}}
+	}
+	for i, v := range d.vidDevices {
 		options[0] = append(options[0], menu.MenuOption{
 			Layout: func(gtx menu.C, th *theme.Theme) menu.D {
-				lb := material.Label(th.Theme, unit.Sp(14), fmt.Sprint(v, i+1))
+				lb := material.Label(th.Theme, unit.Sp(14), v.desc)
 				return lb.Layout(gtx)
 			},
 			OnClicked: func() error {
