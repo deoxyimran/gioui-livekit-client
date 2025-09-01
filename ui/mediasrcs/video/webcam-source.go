@@ -11,21 +11,21 @@ import (
 type WebcamSource struct {
 	mutex          sync.Mutex
 	frame          image.Image
-	devPath        string
+	devName        string
 	isVideoRunning bool
 	bgJobStopSig   chan bool
 }
 
-func NewWebcamSource(devPath string) WebcamSource {
-	return WebcamSource{devPath: devPath}
+func NewWebcamSource(devName string) WebcamSource {
+	return WebcamSource{devName: devName}
 }
 
-func (w *WebcamSource) SetDevPath(path string) {
-	w.devPath = path
+func (w *WebcamSource) SetDevice(name string) {
+	w.devName = name
 }
 
 func (v *WebcamSource) videoCaptureBackgroundTask() error {
-	cap, err := gocv.VideoCaptureFile(v.devPath)
+	cap, err := gocv.VideoCaptureFile(v.devName)
 	if err != nil {
 		return err
 	}

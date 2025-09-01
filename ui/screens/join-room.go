@@ -32,36 +32,12 @@ import (
 	"github.com/oligo/gioview/theme"
 )
 
-type JoinRoom struct {
-	// Widgets
-	th               *material.Theme
-	userNameEditor   editor
-	deviceSelector   deviceSetting
-	joinRoomClickble widget.Clickable
-	// States/control vars
-	stateManager *state.App
-	vidCanvas    components.VideoCanvas
-}
-
 type vidDevice struct {
 	name string
 	desc string
 }
 
-func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
-	th := material.NewTheme()
-	vs := video.NewWebcamSource("")
-	j := &JoinRoom{
-		stateManager:   stateManager,
-		th:             th,
-		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
-		userNameEditor: newEditor(th, "Enter a name", false),
-	}
-	j.deviceSelector = newDevSelector(th, stateManager, []string{"None"}, j.listVideoDevices())
-	return j
-}
-
-func (j *JoinRoom) listVideoDevices() (devices []vidDevice) {
+func listVideoDevices() (devices []vidDevice) {
 	var cmd *exec.Cmd
 	// var vidFormat string
 	switch runtime.GOOS {
@@ -87,7 +63,8 @@ func (j *JoinRoom) listVideoDevices() (devices []vidDevice) {
 			if strings.HasSuffix(line, ":") {
 				// new device block
 				taken = false
-				device.desc = strings.TrimSpace(strings.TrimSuffix(line, ":"))
+				strs := strings.Split(line, ":")
+				device.desc = strings.TrimSpace(strs[0])
 			} else if strings.HasPrefix(line, "/dev/video") && !taken {
 				taken = true // only first /dev/videoN per device
 				device.name = strings.TrimSpace(line)
@@ -97,6 +74,30 @@ func (j *JoinRoom) listVideoDevices() (devices []vidDevice) {
 	case "windows":
 	}
 	return
+}
+
+type JoinRoom struct {
+	// Widgets
+	th               *material.Theme
+	userNameEditor   editor
+	deviceSelector   deviceSetting
+	joinRoomClickble widget.Clickable
+	// States/control vars
+	stateManager *state.App
+	vidCanvas    components.VideoCanvas
+}
+
+func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
+	th := material.NewTheme()
+	vs := video.NewWebcamSource("")
+	j := &JoinRoom{
+		stateManager:   stateManager,
+		th:             th,
+		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
+		userNameEditor: newEditor(th, "Enter a name", false),
+	}
+	j.deviceSelector = newDevSelector(th, stateManager, []string{"None"}, listVideoDevices())
+	return j
 }
 
 func (j *JoinRoom) StopVideoCapture() {
