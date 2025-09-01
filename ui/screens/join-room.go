@@ -80,7 +80,7 @@ type JoinRoom struct {
 	// Widgets
 	th               *material.Theme
 	userNameEditor   editor
-	deviceSelector   deviceSetting
+	deviceSetting    deviceSetting
 	joinRoomClickble widget.Clickable
 	// States/control vars
 	stateManager *state.App
@@ -96,7 +96,7 @@ func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
 		userNameEditor: newEditor(th, "Enter a name", false),
 	}
-	j.deviceSelector = newDevSelector(th, stateManager, []string{"None"}, listVideoDevices())
+	j.deviceSetting = newDevSetting(th, stateManager, []string{"None"}, listVideoDevices())
 	return j
 }
 
@@ -296,7 +296,7 @@ type deviceSetting struct {
 	vidDevices []vidDevice
 }
 
-func newDevSelector(th *material.Theme, st *state.App, micPaths []string, vidDevices []vidDevice) deviceSetting {
+func newDevSetting(th *material.Theme, st *state.App, micPaths []string, vidDevices []vidDevice) deviceSetting {
 	d := deviceSetting{
 		th: th,
 		st: st,
@@ -495,7 +495,7 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 														c.Max.X = 500
 														c.Min.Y, c.Max.Y = 32, 32
 														gtx.Constraints = c
-														return j.deviceSelector.layout(gtx, menuctx)
+														return j.deviceSetting.layout(gtx, menuctx)
 													})
 												}),
 												// Username editor layout
