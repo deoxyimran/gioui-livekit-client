@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"gioui.org/f32"
 	"gioui.org/io/event"
@@ -96,7 +97,7 @@ func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 		vidCanvas:      components.NewVideoCanvas(&vs, image.Pt(380, 260)),
 		userNameEditor: newEditor(th, "Enter a name", false),
 	}
-	j.deviceSetting = newDevSetting(th, stateManager, []string{"None"}, listVideoDevices())
+	j.deviceSetting = newDevSetting(th, stateManager, &vs, []string{"None"}, listVideoDevices())
 	return j
 }
 
@@ -282,6 +283,8 @@ type deviceSetting struct {
 	th *material.Theme
 	st *state.App
 
+	vidSource video.VideoSource
+
 	camToggleBtn   devToggleBtn
 	camDropdownBtn iconButton
 	camDropdownTh  *theme.Theme
@@ -296,10 +299,11 @@ type deviceSetting struct {
 	vidDevices []vidDevice
 }
 
-func newDevSetting(th *material.Theme, st *state.App, micPaths []string, vidDevices []vidDevice) deviceSetting {
+func newDevSetting(th *material.Theme, st *state.App, vidSource video.VideoSource, micPaths []string, vidDevices []vidDevice) deviceSetting {
 	d := deviceSetting{
-		th: th,
-		st: st,
+		th:        th,
+		st:        st,
+		vidSource: vidSource,
 	}
 	sz := image.Pt(20, 20)
 	camOffIcon, _ := svg.LoadSvg(strings.NewReader(icons.CamOff), sz)
@@ -335,14 +339,22 @@ func (d *deviceSetting) newCamDropdown() *menu.DropdownMenu {
 	if d.vidDevices == nil {
 		d.vidDevices = []vidDevice{{name: "None", desc: "No camera found"}}
 	}
-	for i, v := range d.vidDevices {
+	for _, v := range d.vidDevices {
 		options[0] = append(options[0], menu.MenuOption{
 			Layout: func(gtx menu.C, th *theme.Theme) menu.D {
 				lb := material.Label(th.Theme, unit.Sp(14), v.desc)
 				return lb.Layout(gtx)
 			},
 			OnClicked: func() error {
-				fmt.Println("Clicked cam", i+1)
+				d.vidSource.StopVideo()
+				// Small delay to ensure resources properly released before starting stream again
+				time.Sleep(200 * time.Millisecond)
+				// Set new device and start video with it
+				d.vidSource.SetDevice(v.name)
+				err := d.vidSource.StartVideo()
+				if err != nil {
+					log.Println("Error starting video: ", err)
+				}
 				return nil
 			},
 		})

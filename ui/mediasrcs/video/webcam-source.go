@@ -17,15 +17,15 @@ type WebcamSource struct {
 }
 
 func NewWebcamSource(devName string) WebcamSource {
-	return WebcamSource{devName: devName}
+	return WebcamSource{devName: devName, bgJobStopSig: make(chan bool)}
 }
 
 func (w *WebcamSource) SetDevice(name string) {
 	w.devName = name
 }
 
-func (v *WebcamSource) videoCaptureBackgroundTask() error {
-	cap, err := gocv.VideoCaptureFile(v.devName)
+func (w *WebcamSource) videoCaptureBackgroundTask() error {
+	cap, err := gocv.VideoCaptureFile(w.devName)
 	if err != nil {
 		return err
 	}
@@ -34,18 +34,18 @@ func (v *WebcamSource) videoCaptureBackgroundTask() error {
 		loop := true
 		for loop {
 			select {
-			case b := <-v.bgJobStopSig:
+			case b := <-w.bgJobStopSig:
 				if b {
 					loop = !loop
 				}
 			default:
 				if b := cap.Read(&mat); b {
-					v.mutex.Lock()
-					v.frame, err = mat.ToImage()
+					w.mutex.Lock()
+					w.frame, err = mat.ToImage()
 					if err != nil {
 						log.Println(err.Error())
 					}
-					v.mutex.Unlock()
+					w.mutex.Unlock()
 				}
 			}
 		}
