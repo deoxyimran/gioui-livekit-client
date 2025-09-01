@@ -346,14 +346,18 @@ func (d *deviceSetting) newCamDropdown() *menu.DropdownMenu {
 				return lb.Layout(gtx)
 			},
 			OnClicked: func() error {
-				d.vidSource.StopVideo()
-				// Small delay to ensure resources properly released before starting stream again
-				time.Sleep(200 * time.Millisecond)
-				// Set new device and start video with it
-				d.vidSource.SetDevice(v.name)
-				err := d.vidSource.StartVideo()
-				if err != nil {
-					log.Println("Error starting video: ", err)
+				if d.st.CameraOn {
+					d.vidSource.StopVideo()
+					// Small delay to ensure resources properly released before starting stream again
+					time.Sleep(200 * time.Millisecond)
+					// Set new device and start video with it
+					d.vidSource.SetDevice(v.name)
+					err := d.vidSource.StartVideo()
+					if err != nil {
+						log.Println("Error starting video: ", err)
+					}
+				} else {
+					d.vidSource.SetDevice(v.name)
 				}
 				return nil
 			},
@@ -390,6 +394,16 @@ func (d *deviceSetting) toggleMicDropdown(gtx C) {
 
 func (d *deviceSetting) toggleCam() {
 	d.st.CameraOn = !d.st.CameraOn
+	if d.st.CameraOn {
+		time.Sleep(200 * time.Millisecond) // Small delay to ensure resources properly released on last stream
+		err := d.vidSource.StartVideo()
+		if err != nil {
+			log.Println("Error starting video: ", err)
+			d.st.CameraOn = false
+		}
+	} else {
+		d.vidSource.StopVideo()
+	}
 }
 
 func (d *deviceSetting) toggleCamDropdown(gtx C) {
