@@ -20,8 +20,12 @@ func NewWebcamSource(devName string) WebcamSource {
 	return WebcamSource{devName: devName, bgJobStopSig: make(chan bool)}
 }
 
-func (w *WebcamSource) SetDevice(name string) {
+func (w *WebcamSource) SetDeviceName(name string) {
 	w.devName = name
+}
+
+func (w *WebcamSource) GetDeviceName() string {
+	return w.devName
 }
 
 func (w *WebcamSource) videoCaptureBackgroundTask() error {
@@ -71,6 +75,7 @@ func (w *WebcamSource) StopVideo() {
 	if w.isVideoRunning {
 		w.isVideoRunning = false
 		w.bgJobStopSig <- true
+		w.frame = nil
 	}
 }
 

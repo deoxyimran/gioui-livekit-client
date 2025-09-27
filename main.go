@@ -40,7 +40,7 @@ func run(window *app.Window) error {
 		case app.DestroyEvent:
 			fmt.Println("Exiting application...")
 			if joinRoomScreen != nil {
-				joinRoomScreen.StopVideoCapture()
+				joinRoomScreen.StopAndFreeResources()
 			}
 			return e.Err
 		case app.FrameEvent:

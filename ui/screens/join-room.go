@@ -2,6 +2,7 @@ package screens
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -101,8 +102,8 @@ func NewJoinRoomScreen(stateManager *state.App) *JoinRoom {
 	return j
 }
 
-func (j *JoinRoom) StopVideoCapture() {
-
+func (j *JoinRoom) StopAndFreeResources() {
+	j.deviceSetting.stopVideo()
 }
 
 type editor struct {
@@ -177,7 +178,6 @@ func (i *iconButton) layout(gtx C) D {
 		},
 		// Icon
 		func(gtx C) D {
-			fmt.Println("Icon cmin: ", gtx.Constraints.Min)
 			return layout.Inset{Left: unit.Dp(3), Right: unit.Dp(3)}.Layout(gtx, widget.Image{Src: paint.NewImageOp(i.icon), Position: layout.Center}.Layout)
 		},
 	)
@@ -189,7 +189,7 @@ type devToggleBtn struct {
 	offIcon, onIcon image.Image
 	text            string
 	isActive        bool
-	toggleFunc      func()
+	toggleFunc      func() bool
 }
 
 func newToggleButton(th *material.Theme, offIcon, onIcon image.Image, text string) devToggleBtn {
@@ -225,9 +225,8 @@ func (tb *devToggleBtn) layout(gtx C) D {
 					case pointer.Leave:
 						c = orig // back to normal
 					case pointer.Press:
-						tb.isActive = !tb.isActive
 						if tb.toggleFunc != nil {
-							tb.toggleFunc()
+							tb.isActive = tb.toggleFunc()
 						}
 						gtx.Execute(op.InvalidateCmd{})
 					}
@@ -333,6 +332,27 @@ func newDevSetting(th *material.Theme, st *state.App, vidSource video.VideoSourc
 	return d
 }
 
+func (d *deviceSetting) setVideoDeviceName(name string) {
+	d.vidSource.SetDeviceName(name)
+}
+
+func (d *deviceSetting) startVideo() error {
+	if d.vidSource.GetDeviceName() != "None" && d.vidSource.GetDeviceName() != "" { // First check if any device selected
+		time.Sleep(200 * time.Millisecond) // Small delay before initializing video
+		err := d.vidSource.StartVideo()
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("Error: no valid device selected!")
+	}
+	return nil
+}
+
+func (d *deviceSetting) stopVideo() {
+	d.vidSource.StopVideo()
+}
+
 func (d *deviceSetting) newCamDropdown() *menu.DropdownMenu {
 	options := [][]menu.MenuOption{}
 	options = append(options, []menu.MenuOption{})
@@ -347,23 +367,39 @@ func (d *deviceSetting) newCamDropdown() *menu.DropdownMenu {
 			},
 			OnClicked: func() error {
 				if d.st.CameraOn {
-					d.vidSource.StopVideo()
-					// Small delay to ensure resources properly released before starting stream again
-					time.Sleep(200 * time.Millisecond)
-					// Set new device and start video with it
-					d.vidSource.SetDevice(v.name)
-					err := d.vidSource.StartVideo()
+					d.stopVideo()
+					d.setVideoDeviceName(v.name)
+					err := d.startVideo()
 					if err != nil {
 						log.Println("Error starting video: ", err)
+						d.st.CameraOn = false
 					}
 				} else {
-					d.vidSource.SetDevice(v.name)
+					d.setVideoDeviceName(v.name)
 				}
 				return nil
 			},
 		})
 	}
 	return menu.NewDropdownMenu(options)
+}
+
+func (d *deviceSetting) toggleCam() bool {
+	d.st.CameraOn = !d.st.CameraOn
+	if d.st.CameraOn {
+		err := d.startVideo()
+		if err != nil {
+			log.Println("Error starting video: ", err)
+			d.st.CameraOn = false
+		}
+	} else {
+		d.stopVideo()
+	}
+	return d.st.CameraOn
+}
+
+func (d *deviceSetting) toggleCamDropdown(gtx C) {
+	d.camDropdown.ToggleVisibility(gtx)
 }
 
 func (d *deviceSetting) newMicDropdown() *menu.DropdownMenu {
@@ -384,30 +420,13 @@ func (d *deviceSetting) newMicDropdown() *menu.DropdownMenu {
 	return menu.NewDropdownMenu(options)
 }
 
-func (d *deviceSetting) toggleMic() {
+func (d *deviceSetting) toggleMic() bool {
 	d.st.MicOn = !d.st.MicOn
+	return d.st.MicOn
 }
 
 func (d *deviceSetting) toggleMicDropdown(gtx C) {
 	d.micDropdown.ToggleVisibility(gtx)
-}
-
-func (d *deviceSetting) toggleCam() {
-	d.st.CameraOn = !d.st.CameraOn
-	if d.st.CameraOn {
-		time.Sleep(200 * time.Millisecond) // Small delay to ensure resources properly released on last stream
-		err := d.vidSource.StartVideo()
-		if err != nil {
-			log.Println("Error starting video: ", err)
-			d.st.CameraOn = false
-		}
-	} else {
-		d.vidSource.StopVideo()
-	}
-}
-
-func (d *deviceSetting) toggleCamDropdown(gtx C) {
-	d.camDropdown.ToggleVisibility(gtx)
 }
 
 func (d *deviceSetting) update(gtx C) {
@@ -516,7 +535,6 @@ func (j *JoinRoom) Layout(gtx C, screenPointer *Screen) D {
 													return layout.Inset{Top: unit.Dp(8)}.Layout(gtx, func(gtx C) D {
 														menuctx := gtx
 														menuctx.Constraints.Max.Y = 200
-														fmt.Println("Menuctx maxcons: ", menuctx.Constraints.Max)
 														c := gtx.Constraints
 														c.Max.X = 500
 														c.Min.Y, c.Max.Y = 32, 32

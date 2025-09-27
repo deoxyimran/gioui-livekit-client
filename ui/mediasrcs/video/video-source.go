@@ -3,7 +3,8 @@ package video
 import "image"
 
 type VideoSource interface {
-	SetDevice(string)
+	SetDeviceName(string)
+	GetDeviceName() string
 	GetVideoOutFrame() image.Image
 	IsVideoOn() bool
 	StartVideo() error
